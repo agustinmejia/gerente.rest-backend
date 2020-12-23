@@ -3,6 +3,10 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
+// Controllers
+use App\Http\Controllers\CitiesController;
+use App\Http\Controllers\APIController;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -14,6 +18,12 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+Route::post('auth/login', [ApiController::class, 'login']);
+Route::post('auth/register', [APIController::class, 'register']);
+
+
 Route::middleware('auth:api')->get('/user', function (Request $request) {
     return $request->user();
 });
+
+Route::get('cities/list/registers', [CitiesController::class, 'list']);

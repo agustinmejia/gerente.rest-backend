@@ -1,0 +1,21 @@
+/* Select2 */
+.select2-selection{
+    height: 40px !important;
+    border: 1px solid #D1D3E2 !important;
+    padding-top: 5px !important;
+    
+}
+.select2-selection__rendered{
+    color: #6E707E !important;
+}
+
+/* Buttons */
+.btn{
+    margin: 1px !important;
+}
+
+@media (max-width: 768px) {
+    .hidden-sm {
+        display: none !important;
+    }
+}
