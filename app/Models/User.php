@@ -45,4 +45,8 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
+
+    public function owner(){
+        return $this->hasOne('\App\Models\Owner', 'user_id');
+    }
 }

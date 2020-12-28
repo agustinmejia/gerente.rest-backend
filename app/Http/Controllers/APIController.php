@@ -14,12 +14,13 @@ use App\Models\Company;
 
 class APIController extends Controller
 {
+    // Auth
     public function login(Request $request){
         $user = null;
         $token = null;
 
         if($request->social_login){
-            $user = User::where('email', $request->email)->first() ?? $this->newDriver($request);
+            $user = User::where('email', $request->email)->with(['owner.person'])->first() ?? $this->new_owner($request);
             $token = $user->createToken('appxiapi')->accessToken;
 
             // Actualizar token de firebase
@@ -33,7 +34,7 @@ class APIController extends Controller
             if (Auth::attempt($credentials)) {
                 $auth = Auth::user();
                 $token = $auth->createToken('gerente.rest')->accessToken;
-                $user = User::where('id', $auth->id)->first();
+                $user = User::where('id', $auth->id)->with(['owner.person'])->first();
                 // Actualizar token de firebase
                 if($request->firebase_token){
                     $user_update = User::find($user->id);
@@ -75,14 +76,59 @@ class APIController extends Controller
             $company = Company::create([
                 'owner_id' => $owner->id,
                 'name' => $request->companyName,
-                'city_id' => $request->city_id,
+                'city_id' => $request->city,
             ]);
 
+            $user = User::where('id', $user->id)->with(['owner.person'])->first();
+            $token = $user->createToken('gerente.rest')->accessToken;
+
             DB::commit();
-            return response()->json(['user' => $user]);
+            return response()->json(['user' => $user, 'token' => $token]);
         } catch (\Throwable $th) {
             DB::rollback();
             return response()->json(['error' => $th]);
         }
     }
+
+    // Company
+    public function my_company($id){
+        $company = Company::find($id);
+        return response()->json(['company' => $company]);
+    }
+
+    public function my_company_update_images(Request $request){
+        $logo = $this->save_image($request->file('logo'), 'companies');
+        $banner = $this->save_image($request->file('banner'), 'companies');
+
+        try {
+            $company = Company::find($request->id);
+            if($logo){
+                $company->logos = $logo;
+            }
+            if($banner){
+                $company->banners = $banner;
+            }
+            $company->save();
+            return response()->json(['logo' => $logo, 'banner' => $banner]);
+        } catch (\Throwable $th) {
+            return response()->json(['error' => $th]);
+        }
+    }
+
+    public function my_company_update(Request $request){
+        try {
+            $company = Company::find($request->id);
+            $company->name = $request->name;
+            $company->slogan = $request->slogan;
+            $company->city_id = $request->city_id;
+            $company->phones = $request->phones;
+            $company->address = $request->address;
+            $company->small_description = $request->small_description;
+            $company->save();
+            return response()->json(['company' => $company]);
+        } catch (\Throwable $th) {
+            return response()->json(['error' => $th]);
+        }
+    }
+
 }

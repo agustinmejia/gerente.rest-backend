@@ -13,7 +13,9 @@ class Company extends Model
     use HasFactory;
     use HasSlug;
 
-    protected $fillable = ['owner_id', 'name', 'slug', 'slogan', 'small_description', 'long_description', 'city_id', 'address', 'phones', 'logos', 'banners'];
+    protected $fillable = [
+        'owner_id', 'name', 'slug', 'slogan', 'small_description', 'long_description', 'city_id', 'address', 'phones', 'logos', 'banners', 'nit', 'activity_description', 'email'
+    ];
 
     public function getSlugOptions() : SlugOptions{
         return SlugOptions::create()

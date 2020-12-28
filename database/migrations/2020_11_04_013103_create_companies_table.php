@@ -26,6 +26,9 @@ class CreateCompaniesTable extends Migration
             $table->string('phones')->nullable();
             $table->string('logos')->nullable();
             $table->string('banners')->nullable();
+            $table->string('nit')->nullable();
+            $table->string('activity_description')->nullable();
+            $table->string('email')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

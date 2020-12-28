@@ -18,12 +18,16 @@ use App\Http\Controllers\APIController;
 |
 */
 
+// Route::middleware('auth:api')->get('/user', function (Request $request) {
+//     return $request->user();
+// });
+
 Route::post('auth/login', [ApiController::class, 'login']);
 Route::post('auth/register', [APIController::class, 'register']);
-
-
-Route::middleware('auth:api')->get('/user', function (Request $request) {
-    return $request->user();
-});
-
 Route::get('cities/list/registers', [CitiesController::class, 'list']);
+
+Route::group(['middleware' => ['auth:api']], function(){
+    Route::get('company/owner/{id}', [APIController::class, 'my_company']);
+    Route::post('company/owner/{id}/update', [APIController::class, 'my_company_update']);
+    Route::post('company/owner/{id}/update/images', [APIController::class, 'my_company_update_images']);
+});
