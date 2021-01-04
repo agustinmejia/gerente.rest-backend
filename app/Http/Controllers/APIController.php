@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\Person;
 use App\Models\Owner;
 use App\Models\Company;
+use App\Models\Branch;
 
 class APIController extends Controller
 {
@@ -127,6 +128,39 @@ class APIController extends Controller
             $company->save();
             return response()->json(['company' => $company]);
         } catch (\Throwable $th) {
+            return response()->json(['error' => $th]);
+        }
+    }
+
+    public function my_company_branch_list($id){
+        try{
+            $company = Company::where('owner_id', $id)->first();
+            $branches = Branch::where('company_id', $company->id)->get();
+            return response()->json(['branches' => $branches]);
+        } catch (\Throwable $th) {
+            DB::rollback();
+            return response()->json(['error' => $th]);
+        }
+    }
+
+    // Branches
+    public function my_company_branch_create(Request $request){
+        DB::beginTransaction();
+        try {
+            $company = Company::where('owner_id', $request->ownerId)->first();
+            $branch = Branch::create([
+                'company_id' => $company->id,
+                'name' => $request->name,
+                'city' => $request->city,
+                'location' => $request->location,
+                'phones' => $request->phones,
+                'address' => $request->address
+            ]);
+
+            DB::commit();
+            return response()->json(['branch' => $branch]);
+        } catch (\Throwable $th) {
+            DB::rollback();
             return response()->json(['error' => $th]);
         }
     }

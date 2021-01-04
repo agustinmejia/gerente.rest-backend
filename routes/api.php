@@ -28,6 +28,8 @@ Route::get('cities/list/registers', [CitiesController::class, 'list']);
 
 Route::group(['middleware' => ['auth:api']], function(){
     Route::get('company/owner/{id}', [APIController::class, 'my_company']);
+    Route::get('company/owner/{id}/branch/list', [APIController::class, 'my_company_branch_list']);
+    Route::post('company/owner/{id}/branch/create', [APIController::class, 'my_company_branch_create']);
     Route::post('company/owner/{id}/update', [APIController::class, 'my_company_update']);
     Route::post('company/owner/{id}/update/images', [APIController::class, 'my_company_update_images']);
 });
