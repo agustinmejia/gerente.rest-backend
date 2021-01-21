@@ -46,9 +46,9 @@
                                         @enderror
                                     </div>
                                     <div class="form-group">
-                                        <label for="textarea-small_description">Descripción corta</label>
-                                        <textarea name="small_description" id="textarea-small_description" class="form-control @error('small_description') is-invalid @enderror" rows="3" placeholder="Servimos toda clase de delicias...">{{ old('small_description') }}</textarea>
-                                        @error('small_description')
+                                        <label for="textarea-short_description">Descripción corta</label>
+                                        <textarea name="short_description" id="textarea-short_description" class="form-control @error('short_description') is-invalid @enderror" rows="3" placeholder="Servimos toda clase de delicias...">{{ old('short_description') }}</textarea>
+                                        @error('short_description')
                                             <span class="invalid-feedback" role="alert">
                                                 <strong>{{ $message }}</strong>
                                             </span>

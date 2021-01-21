@@ -87,7 +87,7 @@ class CompaniesController extends Controller
             $validatedData = $request->validate([
                 'owner_id' => 'required',
                 'name' => 'required|max:191',
-                'small_description' => 'max:191',
+                'short_description' => 'max:191',
                 'city_id' => 'required',
                 'phones' => 'required|max:191',
                 'address' => 'required|max:191',
@@ -101,7 +101,7 @@ class CompaniesController extends Controller
                 'owner_id' => $request->owner_id,
                 'name' => $request->name,
                 'slogan' => $request->slogan,
-                'small_description' => $request->small_description,
+                'short_description' => $request->short_description,
                 'long_description' => $request->long_description,
                 'city_id' => $request->city_id,
                 'address' => $request->address,

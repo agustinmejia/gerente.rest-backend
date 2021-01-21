@@ -19,7 +19,7 @@ class CreateCompaniesTable extends Migration
             $table->string('name');
             $table->string('slug')->unique();
             $table->string('slogan')->nullable();
-            $table->string('small_description')->nullable();
+            $table->string('short_description')->nullable();
             $table->text('long_description')->nullable();
             $table->foreignId('city_id')->nullable()->constrained();
             $table->string('address')->nullable();

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon;
 
 // Medels
 use App\Models\User;
@@ -74,10 +75,17 @@ class APIController extends Controller
                 'user_id' => $user->id
             ]);
 
+            // Create company
             $company = Company::create([
                 'owner_id' => $owner->id,
                 'name' => $request->companyName,
                 'city_id' => $request->city,
+            ]);
+
+            $branch = Branch::create([
+                'company_id' => $company->id,
+                'name' => 'Casa matriz',
+                'city' => $request->city
             ]);
 
             $user = User::where('id', $user->id)->with(['owner.person'])->first();
@@ -124,7 +132,7 @@ class APIController extends Controller
             $company->city_id = $request->city_id;
             $company->phones = $request->phones;
             $company->address = $request->address;
-            $company->small_description = $request->small_description;
+            $company->short_description = $request->short_description;
             $company->save();
             return response()->json(['company' => $company]);
         } catch (\Throwable $th) {
@@ -132,6 +140,7 @@ class APIController extends Controller
         }
     }
 
+    // Branches
     public function my_company_branch_list($id){
         try{
             $company = Company::where('owner_id', $id)->first();
@@ -143,7 +152,11 @@ class APIController extends Controller
         }
     }
 
-    // Branches
+    public function my_company_branch($id){
+        $branch = Branch::findOrFail($id);
+        return response()->json(['branch' => $branch]);
+    }
+
     public function my_company_branch_create(Request $request){
         DB::beginTransaction();
         try {
@@ -155,6 +168,40 @@ class APIController extends Controller
                 'location' => $request->location,
                 'phones' => $request->phones,
                 'address' => $request->address
+            ]);
+
+            DB::commit();
+            return response()->json(['branch' => $branch]);
+        } catch (\Throwable $th) {
+            DB::rollback();
+            return response()->json(['error' => $th]);
+        }
+    }
+
+    public function my_company_branch_update($id, Request $request){
+        DB::beginTransaction();
+        try {
+            $branch = Branch::where('id', $id)->update([
+                'name' => $request->name,
+                'city' => $request->city,
+                'location' => $request->location,
+                'phones' => $request->phones,
+                'address' => $request->address
+            ]);
+
+            DB::commit();
+            return response()->json(['branch' => $branch]);
+        } catch (\Throwable $th) {
+            DB::rollback();
+            return response()->json(['error' => $th]);
+        }
+    }
+
+    public function my_company_branch_delete($id){
+        DB::beginTransaction();
+        try {
+            $branch = Branch::where('id', $id)->update([
+                'deleted_at' => Carbon::now()
             ]);
 
             DB::commit();

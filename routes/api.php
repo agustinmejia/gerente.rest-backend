@@ -27,9 +27,14 @@ Route::post('auth/register', [APIController::class, 'register']);
 Route::get('cities/list/registers', [CitiesController::class, 'list']);
 
 Route::group(['middleware' => ['auth:api']], function(){
+	// Companies
     Route::get('company/owner/{id}', [APIController::class, 'my_company']);
-    Route::get('company/owner/{id}/branch/list', [APIController::class, 'my_company_branch_list']);
-    Route::post('company/owner/{id}/branch/create', [APIController::class, 'my_company_branch_create']);
     Route::post('company/owner/{id}/update', [APIController::class, 'my_company_update']);
     Route::post('company/owner/{id}/update/images', [APIController::class, 'my_company_update_images']);
+    // Branches
+    Route::get('company/owner/{id}/branch/list', [APIController::class, 'my_company_branch_list']);
+    Route::get('branch/{id}', [APIController::class, 'my_company_branch']);
+    Route::post('branch/create', [APIController::class, 'my_company_branch_create']);
+    Route::post('branch/{id}/update', [APIController::class, 'my_company_branch_update']);
+    Route::get('branch/{id}/delete', [APIController::class, 'my_company_branch_delete']);
 });
