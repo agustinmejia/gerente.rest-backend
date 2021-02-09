@@ -43,6 +43,7 @@ class gerente_rest extends Command
             $this->call('migrate:fresh');
             $this->call('db:seed');
             $this->call('passport:install');
+            $this::call('passport:client', ['--personal' => true]);
             $this->info('La base de datos de Gerente.rest ha sido reiniciada ;)');
         }else{
             
@@ -59,6 +60,7 @@ class gerente_rest extends Command
                 $this->call('db:seed');
                 $this->call('storage:link');
                 $this->call('passport:install');
+                $this::call('passport:client', ['--personal' => true]);
                 $this->info('Gracias por instalar Gerente.rest!!!');
 $this->info('
                 ( ͡▀̿ ̿ ͜ʖ ͡▀̿ ̿ )
@@ -71,6 +73,7 @@ $this->info('
                     $this->call('migrate:fresh');
                     $this->call('db:seed');
                     $this->call('passport:install');
+                    $this::call('passport:client', ['--personal' => true]);
                     $this->info('La base de datos de Gerente.rest ha sido reiniciada ;)');
                 }
             }

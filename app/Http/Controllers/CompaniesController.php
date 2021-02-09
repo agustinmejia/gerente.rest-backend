@@ -172,13 +172,16 @@ class CompaniesController extends Controller
 
     public function braches_list($company_id)
     {
-        $data = Branch::where('deleted_at', NULL)->select('*')->get();
+        $data = Branch::with(['city'])->where('deleted_at', NULL)->select('*')->get();
         if(!User::permission('browse companies')->where('id', auth()->user()->id)->first()){
             return null;
         }
 
         return Datatables::of($data)
                 ->addIndexColumn()
+                ->addColumn('city', function($row){
+                    return $row->city ? $row->city->name.' - '.$row->city->state : 'Undefined';
+                })
                 ->addColumn('action', function($row){
                         $actions = '
                                     <a href="javascript:void(0)" class="edit btn btn-warning btn-sm">
@@ -193,7 +196,7 @@ class CompaniesController extends Controller
                                 ';
                         return $actions;
                 })
-                ->rawColumns(['action'])
+                ->rawColumns(['city', 'action'])
                 ->make(true);
     }
 

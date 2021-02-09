@@ -7,10 +7,15 @@ use Illuminate\Foundation\Bus\DispatchesJobs;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Routing\Controller as BaseController;
 
+use Carbon\Carbon;
+
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 
 use Image;
+
+// Models
+use App\Models\Sale;
 
 class Controller extends BaseController
 {
@@ -52,7 +57,7 @@ class Controller extends BaseController
             // imagen cuadrada
             $filename_small = $base_name.'-cropped.'.$file->getClientOriginalExtension();
             $image_resize = Image::make($file->getRealPath())->orientate();
-            $image_resize->resize(256, null, function ($constraint) {
+            $image_resize->resize(null, 256, function ($constraint) {
                 $constraint->aspectRatio();
             });
             $image_resize->resizeCanvas(256, 256);
@@ -63,5 +68,10 @@ class Controller extends BaseController
         } catch (\Throwable $th) {
             return null;
         }
+    }
+
+    // Sales
+    public function countSalesPerDay($branch_id){
+        return Sale::whereDate('created_at', Carbon::now())->where('branch_id', $branch_id)->count();
     }
 }

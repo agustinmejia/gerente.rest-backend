@@ -16,7 +16,7 @@ class Branch extends Model
     public $table = 'branches';
 
     protected $fillable = [
-        'company_id', 'name', 'slug', 'city', 'location', 'address', 'phones'
+        'company_id', 'name', 'slug', 'city_id', 'location', 'address', 'phones', 'status'
     ];
 
     public function getSlugOptions() : SlugOptions{
@@ -27,5 +27,9 @@ class Branch extends Model
 
     public function getRouteKeyName(){
         return 'slug';
+    }
+
+    public function city(){
+        return $this->belongsTo('\App\Models\City', 'city_id');
     }
 }
