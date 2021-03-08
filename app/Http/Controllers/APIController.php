@@ -21,6 +21,7 @@ use App\Models\Customer;
 use App\Models\Sale;
 use App\Models\SalesDetail;
 use App\Models\Cashier;
+use App\Models\CashierDetail;
 
 class APIController extends Controller
 {
@@ -446,6 +447,7 @@ class APIController extends Controller
             $discount = $request->discount ?? 0;
             $amount_received = $request->amount_received ?? 0;
             $paid_out = ($amount_received >= ($total - $discount)) ? 1 : 0;
+            
             $sale = Sale::create([
                 'branch_id' => $request->branch_id,
                 'customer_id' => $request->customer_id,
@@ -462,6 +464,7 @@ class APIController extends Controller
                 'observations' => $request->observations
             ]);
 
+            // Create sale details
             foreach ($request->sale_details as $item) {
                 SalesDetail::create([
                     'sale_id' => $sale->id,
@@ -470,6 +473,16 @@ class APIController extends Controller
                     'quantity' => $item['quantity'],
                 ]);
             }
+
+            // Create cashier detail
+            CashierDetail::create([
+                'cashier_id' => $request->cashier_id,
+                'user_id' => $request->user_id,
+                'amount' => ($total - $discount),
+                'description' => 'Venta realizada COD:'.$sale->id,
+                'type' => 1,
+                'sale_id' => $sale->id
+            ]);
 
             DB::commit();
             return response()->json(['sale' => $sale]);
@@ -482,7 +495,8 @@ class APIController extends Controller
     // Cashiers
     public function my_company_cashiers_list($id){
         try{
-            $cashiers = Cashier::where('branch_id', $id)->where('deleted_at', NULL)->orderBY('id', 'DESC')->get();
+            $cashiers = Cashier::with(['user', 'branch'])->where('branch_id', $id)
+                        ->where('deleted_at', NULL)->orderBY('id', 'DESC')->get();
             return response()->json(['cashiers' => $cashiers]);
         } catch (\Throwable $th) {
             DB::rollback();

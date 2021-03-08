@@ -22,4 +22,12 @@ class Cashier extends Model
         'missing_amount',
         'status'
     ];
+
+    public function user(){
+        return $this->belongsTo('\App\Models\User', 'user_id');
+    }
+
+    public function branch(){
+        return $this->belongsTo('\App\Models\Branch', 'branch_id');
+    }
 }
