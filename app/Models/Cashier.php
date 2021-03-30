@@ -30,4 +30,8 @@ class Cashier extends Model
     public function branch(){
         return $this->belongsTo('\App\Models\Branch', 'branch_id');
     }
+
+    public function details(){
+        return $this->hasMany(CashierDetail::class);
+    }
 }

@@ -53,6 +53,12 @@ class RolesController extends Controller
                 ->make(true);
     }
 
+    // Lista de roles que puede asignar un propietario
+    public function list_alt(){
+        $roles = Role::where('id', '>', 2)->get();
+        return response()->json(['roles' => $roles]);
+    }
+
     /**
      * Show the form for creating a new resource.
      *

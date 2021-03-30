@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 // Controllers
 use App\Http\Controllers\CitiesController;
 use App\Http\Controllers\APIController;
+use App\Http\Controllers\RolesController;
 use App\Http\Controllers\PrintController;
 
 /*
@@ -57,9 +58,20 @@ Route::group(['middleware' => ['auth:api']], function(){
     Route::post('sales/create', [APIController::class, 'my_company_sale_create']);
     // Cashiers
     Route::get('company/{id}/cashier/list', [APIController::class, 'my_company_cashiers_list']);
+    Route::get('cashier/{id}', [APIController::class, 'my_company_cashier']);
+    Route::post('cashier/{id}/close', [APIController::class, 'my_company_cashier_close']);
     Route::post('branch/{id}/cashier/create', [APIController::class, 'my_branch_cashier_create']);
     Route::get('branch/{id}/cashier/user/{user_id}', [APIController::class, 'my_branch_cashier_user']);
+    // Employes
+    Route::get('company/{id}/employes/list', [APIController::class, 'my_company_employes_list']);
+    Route::get('employe/{id}', [APIController::class, 'my_company_employe']);
+    Route::post('company/{id}/employes/create', [APIController::class, 'my_company_employes_create']);
+    Route::post('employe/{id}/update', [APIController::class, 'my_company_employes_update']);
+    Route::get('employe/{id}/delete', [APIController::class, 'my_company_employes_delete']);
+
+
+    // Funcionales
+    Route::get('roles/list', [RolesController::class, 'list_alt']);
 
 });
-
 // Route::get('print', [PrintController::class, 'print']);

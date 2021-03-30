@@ -10,9 +10,11 @@ use Carbon\Carbon;
 
 // Medels
 use App\Models\User;
+use App\Models\Role;
 use App\Models\ModelHasRole;
 use App\Models\Person;
 use App\Models\Owner;
+use App\Models\Employe;
 use App\Models\Company;
 use App\Models\Branch;
 use App\Models\ProductCategory;
@@ -31,7 +33,7 @@ class APIController extends Controller
         $token = null;
 
         if($request->social_login){
-            $user = User::where('email', $request->email)->with(['owner.person'])->first() ?? $this->new_owner($request);
+            $user = User::where('email', $request->email)->with(['roles'])->where('status', 1)->where('deleted_at', NULL)->first() ?? $this->new_owner($request);
             $token = $user->createToken('appxiapi')->accessToken;
 
             // Actualizar token de firebase
@@ -45,8 +47,14 @@ class APIController extends Controller
             if (Auth::attempt($credentials)) {
                 $auth = Auth::user();
                 $token = $auth->createToken('gerente.rest')->accessToken;
-                $user = User::where('id', $auth->id)->with(['owner.person'])->first();
+                $user = User::where('id', $auth->id)->with(['roles'])->where('status', 1)->where('deleted_at', NULL)->first();
                 
+                if($user->roles){
+                    if($user->roles[0]->id == 1){
+                        return response()->json(['error' => "No tienes permiso para ingresar a nuestra plataforma con estos credenciales."]);
+                    }
+                }
+
                 // Actualizar token de firebase
                 if($request->firebase_token){
                     $user_update = User::findOrFail($user->id);
@@ -57,9 +65,11 @@ class APIController extends Controller
         }
 
         if($user && $token){
-            // Company user
-            $company = $this->get_company($user);
-            return response()->json(['user' => $user, 'company' => $company, 'token' => $token]);
+            // Company info
+            $user_company_info = $this->user_company_info($user);
+            $company = $user_company_info['company'];
+            $branch = $user_company_info['branch'];
+            return response()->json(['user' => $user, 'company' => $company, 'branch' => $branch,'token' => $token]);
         }else{
             return response()->json(['error' => "Usuario o contraseña incorrectos!"]);
         }
@@ -68,6 +78,10 @@ class APIController extends Controller
     public function register(Request $request){
         DB::beginTransaction();
         try {
+            if(User::where('email', $request->email)->first()){
+                return response()->json(['error' => 'El Email ingresado ya existe, intenta con otro!']);
+            }
+
             $user = User::create([
                 'name' => $request->firstName,
                 'email' => $request->email,
@@ -101,32 +115,39 @@ class APIController extends Controller
                 'city_id' => $request->city,
             ]);
 
-            $user = User::where('id', $user->id)->with(['owner.person'])->first();
+            $user = User::where('id', $user->id)->with(['roles'])->first();
             $token = $user->createToken('gerente.rest')->accessToken;
 
-            // Company user
-            $company = $this->get_company($user);
+            // Company info
+            $user_company_info = $this->user_company_info($user);
+            $company = $user_company_info['company'];
 
             DB::commit();
-            return response()->json(['user' => $user, 'company' => $company, 'token' => $token]);
+            return response()->json(['user' => $user, 'company' => $company, 'branch' => $branch, 'token' => $token]);
         } catch (\Throwable $th) {
             DB::rollback();
             return response()->json(['error' => json_encode($th)]);
         }
     }
 
-    public function get_company($user){
+    public function user_company_info($user){
         // Get user role
         $role = ModelHasRole::where('model_type' ,'App\Models\User')->where('model_id', $user->id)->first();
 
         // Get company info
         $company = null;
+        $branch = null;
         if($role->role_id == 2){
-            $company = Company::where('owner_id', $user->owner->id)->first();
-        }else if($role->role_id == 3){
-
+            $company = Company::where('owner_id', $user->owner->id)->where('deleted_at', NULL)->first();
+            $branch = Branch::where('company_id', $company->id)->where('status', 1)->where('deleted_at', NULL)->first();
+        }else{
+            $employe = Employe::where('user_id', $user->id)->first();
+            if($employe){
+                $branch = Branch::findOrFail($employe->branch_id);
+                $company = Company::findOrFail($branch->company_id);
+            }
         }
-        return $company;
+        return ['company' => $company, 'branch' => $branch];
     }
 
     // Company
@@ -179,7 +200,6 @@ class APIController extends Controller
             $branches = Branch::where('company_id', $id)->where('deleted_at', NULL)->get();
             return response()->json(['branches' => $branches]);
         } catch (\Throwable $th) {
-            DB::rollback();
             return response()->json([ 'error' => json_encode($th) ]);
         }
     }
@@ -251,7 +271,6 @@ class APIController extends Controller
             $categories = ProductCategory::whereRaw("(company_id = $id or company_id is NULL)")->where('deleted_at', NULL)->orderBy('name')->get();
             return response()->json(['categories' => $categories]);
         } catch (\Throwable $th) {
-            DB::rollback();
             return response()->json([ 'error' => json_encode($th) ]);
         }
     }
@@ -282,7 +301,6 @@ class APIController extends Controller
             $products = Product::where('company_id', $id)->where('deleted_at', NULL)->get();
             return response()->json(['products' => $products]);
         } catch (\Throwable $th) {
-            DB::rollback();
             return response()->json([ 'error' => json_encode($th) ]);
         }
     }
@@ -295,7 +313,6 @@ class APIController extends Controller
                                 ->whereRaw("(company_id = $id or company_id is NULL)")->get();
             return response()->json(['products_category' => $products_category]);
         } catch (\Throwable $th) {
-            DB::rollback();
             return response()->json([ 'error' => json_encode($th) ]);
         }
     }
@@ -372,7 +389,6 @@ class APIController extends Controller
                             ->where('id', '>', 1)->where('deleted_at', NULL)->get();
             return response()->json(['customers' => $customers]);
         } catch (\Throwable $th) {
-            DB::rollback();
             return response()->json([ 'error' => json_encode($th) ]);
         }
     }
@@ -434,7 +450,6 @@ class APIController extends Controller
                             ->whereDate('created_at', Carbon::now())->orderBY('id', 'DESC')->get();
             return response()->json(['sales' => $sales]);
         } catch (\Throwable $th) {
-            DB::rollback();
             return response()->json([ 'error' => json_encode($th) ]);
         }
     }
@@ -495,11 +510,35 @@ class APIController extends Controller
     // Cashiers
     public function my_company_cashiers_list($id){
         try{
-            $cashiers = Cashier::with(['user', 'branch'])->where('branch_id', $id)
+            $cashiers = Cashier::with(['user', 'branch', 'details'])->where('branch_id', $id)
                         ->where('deleted_at', NULL)->orderBY('id', 'DESC')->get();
             return response()->json(['cashiers' => $cashiers]);
         } catch (\Throwable $th) {
-            DB::rollback();
+            return response()->json([ 'error' => json_encode($th) ]);
+        }
+    }
+
+    public function my_company_cashier($id){
+        try{
+            $cashier = Cashier::with(['user', 'branch', 'details'])->where('id', $id)->first();
+            return response()->json(['cashier' => $cashier]);
+        } catch (\Throwable $th) {
+            return response()->json([ 'error' => json_encode($th) ]);
+        }
+    }
+
+    public function my_company_cashier_close($id, Request $request){
+        try{
+            $cashier = Cashier::where('id', $id)->update([
+                'closing_amount' => $request->closing_amount,
+                'missing_amount' => $request->missing_amount,
+                'observations' => $request->observations,
+                'real_amount' => $request->real_amount,
+                'status' => 2,
+                'closing' => Carbon::now()
+            ]);
+            return response()->json(['cashier' => $cashier]);
+        } catch (\Throwable $th) {
             return response()->json([ 'error' => json_encode($th) ]);
         }
     }
@@ -523,8 +562,143 @@ class APIController extends Controller
     public function my_branch_cashier_user($id, $user_id){
         try{
             $cashier = Cashier::where('branch_id', $id)->where('user_id', $user_id)
-                        ->where('status', 1)->where('deleted_at', NULL)->orderBY('id', 'DESC')->first();
+                        ->where('status', 1)->where('deleted_at', NULL)->first();
             return response()->json(['cashier' => $cashier]);
+        } catch (\Throwable $th) {
+            return response()->json([ 'error' => json_encode($th) ]);
+        }
+    }
+
+    // Employes
+    public function my_company_employes_list($id){
+        try{
+            $employes = Employe::with(['person', 'user.roles', 'branch'])->where('branch_id', $id)
+                        ->where('deleted_at', NULL)->orderBY('id', 'DESC')->get();
+            return response()->json(['employes' => $employes]);
+        } catch (\Throwable $th) {
+            return response()->json([ 'error' => json_encode($th) ]);
+        }
+    }
+
+    public function my_company_employe($id){
+        try{
+            $employe = Employe::with(['person', 'user.roles', 'branch'])->where('id', $id)->first();
+            return response()->json(['employe' => $employe]);
+        } catch (\Throwable $th) {
+            return response()->json([ 'error' => 'Ocurrió un error al cargar los datos del empleado.' ]);
+        }
+    }
+
+    public function my_company_employes_create($id, Request $request){
+        DB::beginTransaction();
+        try {
+
+            if(User::where('email', $request->email)->first()){
+                return response()->json(['error' => 'El Email ingresado ya existe, intenta con otro!']);
+            }
+
+            $image = $this->save_image($request->file('image'), 'employes');
+            $user = User::create([
+                'name' => $request->first_name,
+                'email' => $request->email,
+                'password' => bcrypt($request->password),
+                'avatar' => $image
+            ]);
+
+            $role = Role::find($request->role_id);
+            $user->assignRole($role->name);
+
+            // create person
+            $person = Person::create([
+                'first_name' => $request->first_name,
+                'last_name' => $request->last_name,
+                'ci_nit' => $request->ci,
+                'phone' => $request->phone,
+                'address' => $request->address
+            ]);
+
+            $employe = Employe::create([
+                'person_id' => $person->id,
+                'user_id' => $user->id,
+                'branch_id' => $request->branch_id
+            ]);
+
+            DB::commit();
+            return response()->json(['employe' => $employe]);
+        } catch (\Throwable $th) {
+            DB::rollback();
+            return response()->json([ 'error' => json_encode($th) ]);
+        }
+    }
+
+    public function my_company_employes_update($id, Request $request){
+        DB::beginTransaction();
+        try {
+
+            $employe = Employe::with(['person', 'user'])->where('id', $id)->first();
+
+            if(User::where('email', $request->email)->where('id', '<>', $employe->user->id)->first()){
+                return response()->json(['error' => 'El Email ingresado ya existe, intenta con otro!']);
+            }
+
+            $image = $this->save_image($request->file('image'), 'employes');
+            $user = User::find($employe->user->id);
+            $user->name = $request->first_name;
+            $user->email = $request->email;
+            if($request->password){
+                $user->password = bcrypt($request->password);
+            }
+            if($image){
+                $user->avatar = $image;   
+            }
+            $user->save();
+
+            ModelHasRole::where('model_type', 'App\Models\User')->where('model_id', $employe->user->id)->delete();
+
+            $role = Role::find($request->role_id);
+            $user->assignRole($role->name);
+
+            // create person
+            $person = Person::where('id', $employe->person->id)->update([
+                'first_name' => $request->first_name,
+                'last_name' => $request->last_name,
+                'ci_nit' => $request->ci,
+                'phone' => $request->phone,
+                'address' => $request->address
+            ]);
+
+            $employe = Employe::where('id', $employe->id)->update([
+                'branch_id' => $request->branch_id
+            ]);
+
+            DB::commit();
+            return response()->json(['employe' => $employe]);
+        } catch (\Throwable $th) {
+            DB::rollback();
+            return response()->json([ 'error' => json_encode($th) ]);
+        }
+    }
+
+    public function my_company_employes_delete($id){
+        DB::beginTransaction();
+        try {
+            $employe = Employe::with(['person', 'user'])->where('id', $id)->first();
+            
+            User::where('id', $employe->user->id)->update([
+                'deleted_at' => Carbon::now()
+            ]);
+
+            Person::where('id', $employe->person->id)->update([
+                'deleted_at' => Carbon::now()
+            ]);
+
+            Employe::where('id', $employe->id)->update([
+                'status' => 0,
+                'deleted_at' => Carbon::now()
+            ]);
+
+            DB::commit();
+            return response()->json(['employe' => $employe]);
         } catch (\Throwable $th) {
             DB::rollback();
             return response()->json([ 'error' => json_encode($th) ]);

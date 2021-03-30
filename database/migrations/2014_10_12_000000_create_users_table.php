@@ -20,7 +20,7 @@ class CreateUsersTable extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->string('avatar')->nullable()->default('../images/user.svg');
-            $table->smallInteger('status')->nullable()->default(0);
+            $table->smallInteger('status')->nullable()->default(1);
             $table->string('firebase_token')->nullable();
             $table->rememberToken();
             $table->timestamps();

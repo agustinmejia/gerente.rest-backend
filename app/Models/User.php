@@ -49,4 +49,8 @@ class User extends Authenticatable
     public function owner(){
         return $this->hasOne('\App\Models\Owner', 'user_id');
     }
+
+    public function employe(){
+        return $this->hasOne('\App\Models\Employe', 'user_id');
+    }
 }

@@ -18,7 +18,7 @@ class CreateEmployesTable extends Migration
             $table->foreignId('person_id')->constrained('people');
             $table->foreignId('user_id')->constrained('users');
             $table->foreignId('branch_id')->constrained('branches');
-            $table->string('status', 1)->nullable();
+            $table->smallInteger('status')->nullable()->default(1);
             $table->timestamps();
             $table->softDeletes();
         });
