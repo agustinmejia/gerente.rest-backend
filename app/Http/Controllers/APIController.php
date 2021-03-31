@@ -19,11 +19,13 @@ use App\Models\Company;
 use App\Models\Branch;
 use App\Models\ProductCategory;
 use App\Models\Product;
+use App\Models\ProductBranch;
 use App\Models\Customer;
 use App\Models\Sale;
 use App\Models\SalesDetail;
 use App\Models\Cashier;
 use App\Models\CashierDetail;
+use App\Models\InventoryHistory;
 
 class APIController extends Controller
 {
@@ -126,7 +128,7 @@ class APIController extends Controller
             return response()->json(['user' => $user, 'company' => $company, 'branch' => $branch, 'token' => $token]);
         } catch (\Throwable $th) {
             DB::rollback();
-            return response()->json(['error' => json_encode($th)]);
+            return response()->json(['error' => 'Ocurrió un error inesperado!']);
         }
     }
 
@@ -168,7 +170,7 @@ class APIController extends Controller
             $company->save();
             return response()->json(['company' => $company]);
         } catch (\Throwable $th) {
-            return response()->json(['error' => json_encode($th)]);
+            return response()->json(['error' => 'Ocurrió un error inesperado!']);
         }
     }
 
@@ -190,7 +192,7 @@ class APIController extends Controller
 
             return response()->json(['company' => $company]);
         } catch (\Throwable $th) {
-            return response()->json([ 'error' => json_encode($th) ]);
+            return response()->json([ 'error' => 'Ocurrió un error inesperado!' ]);
         }
     }
 
@@ -200,7 +202,7 @@ class APIController extends Controller
             $branches = Branch::where('company_id', $id)->where('deleted_at', NULL)->get();
             return response()->json(['branches' => $branches]);
         } catch (\Throwable $th) {
-            return response()->json([ 'error' => json_encode($th) ]);
+            return response()->json([ 'error' => 'Ocurrió un error inesperado!' ]);
         }
     }
 
@@ -226,7 +228,7 @@ class APIController extends Controller
             return response()->json(['branch' => $branch]);
         } catch (\Throwable $th) {
             DB::rollback();
-            return response()->json([ 'error' => json_encode($th) ]);
+            return response()->json([ 'error' => 'Ocurrió un error inesperado!' ]);
         }
     }
 
@@ -245,7 +247,7 @@ class APIController extends Controller
             return response()->json(['branch' => $branch]);
         } catch (\Throwable $th) {
             DB::rollback();
-            return response()->json([ 'error' => json_encode($th) ]);
+            return response()->json([ 'error' => 'Ocurrió un error inesperado!' ]);
         }
     }
 
@@ -271,17 +273,16 @@ class APIController extends Controller
             $categories = ProductCategory::whereRaw("(company_id = $id or company_id is NULL)")->where('deleted_at', NULL)->orderBy('name')->get();
             return response()->json(['categories' => $categories]);
         } catch (\Throwable $th) {
-            return response()->json([ 'error' => json_encode($th) ]);
+            return response()->json([ 'error' => 'Ocurrió un error inesperado!' ]);
         }
     }
 
-    public function my_company_product_category_create(Request $request){
+    public function my_company_product_category_create($id, Request $request){
         DB::beginTransaction();
         try {
-            $company = Company::where('owner_id', $request->owner_id)->first();
             $image = $this->save_image($request->file('image'), 'product_category');
             $product_category = ProductCategory::create([
-                'company_id' => $company->id,
+                'company_id' => $id,
                 'name' => $request->name,
                 'description' => $request->description,
                 'image' => $image
@@ -291,29 +292,29 @@ class APIController extends Controller
             return response()->json(['product_category' => $product_category]);
         } catch (\Throwable $th) {
             DB::rollback();
-            return response()->json([ 'error' => json_encode($th) ]);
+            return response()->json([ 'error' => 'Ocurrió un error inesperado!' ]);
         }
     }
 
     // Products
     public function my_company_products_list($id){
         try{
-            $products = Product::where('company_id', $id)->where('deleted_at', NULL)->get();
+            $products = Product::with(['stock.branch'])->where('company_id', $id)->where('deleted_at', NULL)->get();
             return response()->json(['products' => $products]);
         } catch (\Throwable $th) {
-            return response()->json([ 'error' => json_encode($th) ]);
+            return response()->json([ 'error' => 'Ocurrió un error inesperado!' ]);
         }
     }
 
     public function my_company_products_by_category_list($id){
         try{
-            $products_category = ProductCategory::with(['products' => function ($query) use ($id){
-                                    return $query->where('company_id',$id);
+            $products_category = ProductCategory::with(['products.stock.branch' => function ($query) use ($id){
+                                    return $query->where('company_id',$id)->where('deleted_at', NULL);
                                 }])
                                 ->whereRaw("(company_id = $id or company_id is NULL)")->get();
             return response()->json(['products_category' => $products_category]);
         } catch (\Throwable $th) {
-            return response()->json([ 'error' => json_encode($th) ]);
+            return response()->json([ 'error' => 'Error en el servidor.' ]);
         }
     }
 
@@ -322,13 +323,13 @@ class APIController extends Controller
         return response()->json(['product' => $product]);
     }
 
-    public function my_company_product_create(Request $request){
+    public function my_company_product_create($id, Request $request){
         DB::beginTransaction();
         try {
             $company = Company::where('owner_id', $request->owner_id)->first();
             $image = $this->save_image($request->file('image'), 'products');
             $product = Product::create([
-                'company_id' => $company->id,
+                'company_id' => $id,
                 'product_category_id' => $request->product_category_id,
                 'name' => $request->name,
                 'type' => $request->type,
@@ -341,7 +342,36 @@ class APIController extends Controller
             return response()->json(['product' => $product]);
         } catch (\Throwable $th) {
             DB::rollback();
-            return response()->json([ 'error' => json_encode($th) ]);
+            return response()->json([ 'error' => 'Ocurrió un error inesperado!' ]);
+        }
+    }
+
+    public function my_company_product_inventory_store($id, Request $request){
+        try {
+            $product_branch = ProductBranch::where('product_id', $id)->where('branch_id', $request->branch_id)->first();
+            if($product_branch){
+                $product_branch->stock += $request->stock;
+                $product_branch->save();
+            }else{
+                $product_branch = ProductBranch::create([
+                    'branch_id' => $request->branch_id,
+                    'product_id' => $id,
+                    'stock' => $request->stock
+                ]);
+            }
+
+            InventoryHistory::create([
+                'branch_id' => $request->branch_id,
+                'user_id' => $request->user_id,
+                'product_id' => $id,
+                'stock' => $request->stock
+            ]);
+
+            $stock = ProductBranch::with(['branch'])->where('product_id', $id)->where('deleted_at', NULL)->get();
+
+            return response()->json([ 'stock' => $stock ]);
+        } catch (\Throwable $th) {
+            return response()->json(['error' => 'Ocurrió un error inesperado!']);
         }
     }
 
@@ -374,7 +404,7 @@ class APIController extends Controller
             $product->save();
 
             DB::commit();
-            return response()->json(['product' => $id]);
+            return response()->json(['product_id' => $id]);
         } catch (\Throwable $th) {
             DB::rollback();
             return response()->json(['error' => 'Ocurrió un error inesperado!']);
@@ -389,7 +419,7 @@ class APIController extends Controller
                             ->where('id', '>', 1)->where('deleted_at', NULL)->get();
             return response()->json(['customers' => $customers]);
         } catch (\Throwable $th) {
-            return response()->json([ 'error' => json_encode($th) ]);
+            return response()->json([ 'error' => 'Ocurrió un error inesperado!' ]);
         }
     }
 
@@ -416,7 +446,7 @@ class APIController extends Controller
             return response()->json(['customer' => $customer]);
         } catch (\Throwable $th) {
             DB::rollback();
-            return response()->json([ 'error' => json_encode($th) ]);
+            return response()->json([ 'error' => 'Ocurrió un error inesperado!' ]);
         }
     }
 
@@ -438,7 +468,7 @@ class APIController extends Controller
             return response()->json(['customer' => $customer]);
         } catch (\Throwable $th) {
             DB::rollback();
-            return response()->json([ 'error' => json_encode($th) ]);
+            return response()->json([ 'error' => 'Ocurrió un error inesperado!' ]);
         }
     }
 
@@ -450,7 +480,7 @@ class APIController extends Controller
                             ->whereDate('created_at', Carbon::now())->orderBY('id', 'DESC')->get();
             return response()->json(['sales' => $sales]);
         } catch (\Throwable $th) {
-            return response()->json([ 'error' => json_encode($th) ]);
+            return response()->json([ 'error' => 'Ocurrió un error inesperado!' ]);
         }
     }
 
@@ -503,7 +533,7 @@ class APIController extends Controller
             return response()->json(['sale' => $sale]);
         } catch (\Throwable $th) {
             DB::rollback();
-            return response()->json([ 'error' => json_encode($th) ]);
+            return response()->json([ 'error' => 'Ocurrió un error inesperado!' ]);
         }
     }
 
@@ -514,7 +544,7 @@ class APIController extends Controller
                         ->where('deleted_at', NULL)->orderBY('id', 'DESC')->get();
             return response()->json(['cashiers' => $cashiers]);
         } catch (\Throwable $th) {
-            return response()->json([ 'error' => json_encode($th) ]);
+            return response()->json([ 'error' => 'Ocurrió un error inesperado!' ]);
         }
     }
 
@@ -523,7 +553,43 @@ class APIController extends Controller
             $cashier = Cashier::with(['user', 'branch', 'details'])->where('id', $id)->first();
             return response()->json(['cashier' => $cashier]);
         } catch (\Throwable $th) {
-            return response()->json([ 'error' => json_encode($th) ]);
+            return response()->json([ 'error' => 'Ocurrió un error inesperado!' ]);
+        }
+    }
+
+    public function my_company_cashier_detail_store($id, Request $request){
+
+        // Si es un egreso verificar que sea menor al monto en caja
+        if($request->type == 2){
+            $cashier = Cashier::with(['details'])->where('id', $id)->first();
+            $total = $cashier->opening_amount;
+            
+            // Recorrer todos los ingresos y sumarlos al monto de apertura
+            foreach ($cashier->details as $value) {
+                if($value->type == 1){
+                    $total += $value->amount;
+                }else{
+                    $total -= $value->amount;
+                }
+            }
+
+            if($total < $request->amount){
+                return response()->json([ 'error' => 'El monto de egreso excede el monto de dinero en caja.']);
+            }
+        }
+
+        try{
+            CashierDetail::create([
+                'cashier_id' => $id,
+                'user_id' => $request->user_id,
+                'description' => $request->description,
+                'amount' => $request->amount,
+                'type' => $request->type
+            ]);
+            $cashier = Cashier::with(['user', 'branch', 'details'])->where('id', $id)->first();
+            return response()->json(['cashier' => $cashier]);
+        } catch (\Throwable $th) {
+            return response()->json([ 'error' => 'Ocurrió un error en nuestro servidor, intente nuevamente!' ]);
         }
     }
 
@@ -539,7 +605,19 @@ class APIController extends Controller
             ]);
             return response()->json(['cashier' => $cashier]);
         } catch (\Throwable $th) {
-            return response()->json([ 'error' => json_encode($th) ]);
+            return response()->json([ 'error' => 'Ocurrió un error inesperado!' ]);
+        }
+    }
+
+    public function my_company_cashier_delete($id){
+        try {
+            Cashier::where('id', $id)->update([
+                'observations' => 'Eliminada',
+                'deleted_at' => Carbon::now()
+            ]);
+            return response()->json(['cashier_id' => $id]);
+        } catch (\Throwable $th) {
+            return response()->json([ 'error' => 'Ocurrió un error inesperado!' ]);
         }
     }
 
@@ -555,7 +633,7 @@ class APIController extends Controller
             return response()->json(['cashier' => $cashier]);
         } catch (\Throwable $th) {
             DB::rollback();
-            return response()->json([ 'error' => json_encode($th) ]);
+            return response()->json([ 'error' => 'Ocurrió un error inesperado!' ]);
         }
     }
 
@@ -565,7 +643,7 @@ class APIController extends Controller
                         ->where('status', 1)->where('deleted_at', NULL)->first();
             return response()->json(['cashier' => $cashier]);
         } catch (\Throwable $th) {
-            return response()->json([ 'error' => json_encode($th) ]);
+            return response()->json([ 'error' => 'Ocurrió un error inesperado!' ]);
         }
     }
 
@@ -576,7 +654,7 @@ class APIController extends Controller
                         ->where('deleted_at', NULL)->orderBY('id', 'DESC')->get();
             return response()->json(['employes' => $employes]);
         } catch (\Throwable $th) {
-            return response()->json([ 'error' => json_encode($th) ]);
+            return response()->json([ 'error' => 'Ocurrió un error inesperado!' ]);
         }
     }
 
@@ -627,7 +705,7 @@ class APIController extends Controller
             return response()->json(['employe' => $employe]);
         } catch (\Throwable $th) {
             DB::rollback();
-            return response()->json([ 'error' => json_encode($th) ]);
+            return response()->json([ 'error' => 'Ocurrió un error inesperado!' ]);
         }
     }
 
@@ -675,7 +753,7 @@ class APIController extends Controller
             return response()->json(['employe' => $employe]);
         } catch (\Throwable $th) {
             DB::rollback();
-            return response()->json([ 'error' => json_encode($th) ]);
+            return response()->json([ 'error' => 'Ocurrió un error inesperado!' ]);
         }
     }
 
@@ -701,8 +779,7 @@ class APIController extends Controller
             return response()->json(['employe' => $employe]);
         } catch (\Throwable $th) {
             DB::rollback();
-            return response()->json([ 'error' => json_encode($th) ]);
+            return response()->json([ 'error' => 'Ocurrió un error inesperado!' ]);
         }
     }
-
 }

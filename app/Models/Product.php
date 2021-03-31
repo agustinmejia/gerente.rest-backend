@@ -30,4 +30,8 @@ class Product extends Model
     public function category(){
         return $this->belongsTo(ProductCategory::class,'product_category_id');
     }
+
+    public function stock(){
+        return $this->hasMany(ProductBranch::class);
+    }
 }

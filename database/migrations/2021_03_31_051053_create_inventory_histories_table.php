@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateEmployesTable extends Migration
+class CreateInventoryHistoriesTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,12 +13,13 @@ class CreateEmployesTable extends Migration
      */
     public function up()
     {
-        Schema::create('employes', function (Blueprint $table) {
+        Schema::create('inventory_histories', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('person_id')->nullable()->constrained('people');
-            $table->foreignId('user_id')->nullable()->constrained('users');
             $table->foreignId('branch_id')->nullable()->constrained('branches');
-            $table->smallInteger('status')->nullable()->default(1);
+            $table->foreignId('branch_origen_id')->nullable()->constrained('branches');
+            $table->foreignId('user_id')->nullable()->constrained('users');
+            $table->foreignId('product_id')->nullable()->constrained('products');
+            $table->decimal('stock', 10, 2)->nullable()->default(0);
             $table->timestamps();
             $table->softDeletes();
         });
@@ -31,6 +32,6 @@ class CreateEmployesTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('employes');
+        Schema::dropIfExists('inventory_histories');
     }
 }

@@ -41,12 +41,13 @@ Route::group(['middleware' => ['auth:api']], function(){
     Route::get('branch/{id}/delete', [APIController::class, 'my_company_branch_delete']);
     // Products categories
     Route::get('company/{id}/product_category/list', [APIController::class, 'my_company_products_category_list']);
-    Route::post('product_category/create', [APIController::class, 'my_company_product_category_create']);
+    Route::post('company/{id}/product_category/create', [APIController::class, 'my_company_product_category_create']);
     // Products
     Route::get('company/{id}/products/list', [APIController::class, 'my_company_products_list']);
     Route::get('company/{id}/products/category/list', [APIController::class, 'my_company_products_by_category_list']);
     Route::get('product/{id}', [APIController::class, 'my_company_product']);
-    Route::post('product/create', [APIController::class, 'my_company_product_create']);
+    Route::post('company/{id}/product/create', [APIController::class, 'my_company_product_create']);
+    Route::post('product/{id}/inventory/store', [APIController::class, 'my_company_product_inventory_store']);
     Route::post('product/{id}/update', [APIController::class, 'my_company_product_update']);
     Route::get('product/{id}/delete', [APIController::class, 'my_company_product_delete']);
     // Customers
@@ -59,8 +60,10 @@ Route::group(['middleware' => ['auth:api']], function(){
     // Cashiers
     Route::get('company/{id}/cashier/list', [APIController::class, 'my_company_cashiers_list']);
     Route::get('cashier/{id}', [APIController::class, 'my_company_cashier']);
-    Route::post('cashier/{id}/close', [APIController::class, 'my_company_cashier_close']);
+    Route::post('cashier/{id}/detail/store', [APIController::class, 'my_company_cashier_detail_store']);
     Route::post('branch/{id}/cashier/create', [APIController::class, 'my_branch_cashier_create']);
+    Route::post('cashier/{id}/close', [APIController::class, 'my_company_cashier_close']);
+    Route::get('cashier/{id}/delete', [APIController::class, 'my_company_cashier_delete']);
     Route::get('branch/{id}/cashier/user/{user_id}', [APIController::class, 'my_branch_cashier_user']);
     // Employes
     Route::get('company/{id}/employes/list', [APIController::class, 'my_company_employes_list']);
