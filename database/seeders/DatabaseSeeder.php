@@ -20,7 +20,8 @@ class DatabaseSeeder extends Seeder
             CitiesTableSeeder::class,
             ProductCategoriesTableSeeder::class,
             PeopleTableSeeder::class,
-            CustomerTableSeeder::class
+            CustomerTableSeeder::class,
+            SuscriptionsTypeTableSeeder::class
         ]);
     }
 }

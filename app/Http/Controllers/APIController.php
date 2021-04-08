@@ -35,7 +35,7 @@ class APIController extends Controller
         $token = null;
 
         if($request->social_login){
-            $user = User::where('email', $request->email)->with(['roles'])->where('status', 1)->where('deleted_at', NULL)->first() ?? $this->new_owner($request);
+            $user = User::where('email', $request->email)->with(['roles', 'suscription'])->where('status', 1)->where('deleted_at', NULL)->first() ?? $this->new_owner($request);
             $token = $user->createToken('appxiapi')->accessToken;
 
             // Actualizar token de firebase
@@ -49,7 +49,7 @@ class APIController extends Controller
             if (Auth::attempt($credentials)) {
                 $auth = Auth::user();
                 $token = $auth->createToken('gerente.rest')->accessToken;
-                $user = User::where('id', $auth->id)->with(['roles'])->where('status', 1)->where('deleted_at', NULL)->first();
+                $user = User::where('id', $auth->id)->with(['roles', 'suscription'])->where('status', 1)->where('deleted_at', NULL)->first();
                 
                 if($user->roles){
                     if($user->roles[0]->id == 1){

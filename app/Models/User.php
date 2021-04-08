@@ -53,4 +53,8 @@ class User extends Authenticatable
     public function employe(){
         return $this->hasOne('\App\Models\Employe', 'user_id');
     }
+
+    public function suscription(){
+        return $this->hasOne('\App\Models\Suscription', 'user_id');
+    }   
 }
