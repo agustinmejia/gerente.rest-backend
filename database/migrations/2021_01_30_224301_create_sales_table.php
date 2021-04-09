@@ -19,6 +19,7 @@ class CreateSalesTable extends Migration
             $table->foreignId('customer_id')->nullable()->constrained('customers');
             $table->foreignId('user_id')->nullable()->constrained('users');
             $table->foreignId('cashier_id')->nullable()->constrained('cashiers');
+            $table->foreignId('sales_status_id')->nullable()->constrained('sales_status');
             $table->integer('sale_number')->nullable();
             $table->smallInteger('payment_type')->nullable()->default(1);
             $table->string('sale_type', 20)->nullable()->default('mesa');

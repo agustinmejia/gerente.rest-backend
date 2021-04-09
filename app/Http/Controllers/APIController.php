@@ -475,9 +475,31 @@ class APIController extends Controller
     // Sales
     public function my_branch_sales_list($id){
         try{
-            $sales = Sale::with(['customer.person'])
+            $sales = Sale::with(['customer.person', 'status'])
                             ->where('branch_id', $id)->where('deleted_at', NULL)
                             ->whereDate('created_at', Carbon::now())->orderBY('id', 'DESC')->get();
+            return response()->json(['sales' => $sales]);
+        } catch (\Throwable $th) {
+            return response()->json([ 'error' => 'Ocurrió un error inesperado!' ]);
+        }
+    }
+
+    public function my_branch_sales_kitchen_list($id){
+        try{
+            $sales = Sale::with(['details.product', 'status'])
+                            ->where('branch_id', $id)->where('sales_status_id', 2)->where('deleted_at', NULL)
+                            ->whereDate('created_at', Carbon::now())->orderBY('id', 'ASC')->get();
+            return response()->json(['sales' => $sales]);
+        } catch (\Throwable $th) {
+            return response()->json([ 'error' => 'Ocurrió un error inesperado!' ]);
+        }
+    }
+
+    public function my_branch_sales_tickets_list($id){
+        try{
+            $sales = Sale::with(['status'])
+                            ->where('branch_id', $id)->whereRaw("(sales_status_id = 2 or sales_status_id = 3)")->where('deleted_at', NULL)
+                            ->whereDate('created_at', Carbon::now())->orderBY('id', 'ASC')->orderBY('sales_status_id', 'DESC')->get();
             return response()->json(['sales' => $sales]);
         } catch (\Throwable $th) {
             return response()->json([ 'error' => 'Ocurrió un error inesperado!' ]);
@@ -501,6 +523,7 @@ class APIController extends Controller
                 'sale_number' => $this->countSalesPerDay($request->branch_id) +1,
                 'payment_type' => $request->payment_type,
                 'sale_type' => $request->sale_type,
+                'sales_status_id' => $request->sales_status_id,
                 'total' => $total,
                 'discount' => $discount,
                 'paid_out' => $paid_out,
@@ -519,20 +542,44 @@ class APIController extends Controller
                 ]);
             }
 
-            // Create cashier detail
-            CashierDetail::create([
-                'cashier_id' => $request->cashier_id,
-                'user_id' => $request->user_id,
-                'amount' => ($total - $discount),
-                'description' => 'Venta realizada COD:'.$sale->id,
-                'type' => 1,
-                'sale_id' => $sale->id
-            ]);
+            // Si el pago es en efectivo se registra en caja
+            if($request->payment_type == 1){
+                // Create cashier detail
+                CashierDetail::create([
+                    'cashier_id' => $request->cashier_id,
+                    'user_id' => $request->user_id,
+                    'amount' => ($total - $discount),
+                    'description' => 'Venta realizada COD:'.$sale->id,
+                    'type' => 1,
+                    'sale_id' => $sale->id
+                ]);
+            }
 
             DB::commit();
             return response()->json(['sale' => $sale]);
         } catch (\Throwable $th) {
             DB::rollback();
+            return response()->json([ 'error' => 'Ocurrió un error inesperado!' ]);
+        }
+    }
+
+    public function my_company_sale($id){
+        try {
+            $sale = Sale::with(['customer.person', 'details.product', 'branch.city', 'status', 'employe'])
+                            ->where('id', $id)->first();
+            return response()->json(['sale' => $sale]);
+        } catch (\Throwable $th) {
+            return response()->json(['error' => 'Ocurrió un error desconocido']);
+        }
+    }
+
+    public function my_company_sale_update_status($id, Request $request){
+        try{
+            Sale::where('id', $id)->update([
+                'sales_status_id' => $request->sales_status_id
+            ]);
+            return response()->json(['sale' => $id]);
+        } catch (\Throwable $th) {
             return response()->json([ 'error' => 'Ocurrió un error inesperado!' ]);
         }
     }

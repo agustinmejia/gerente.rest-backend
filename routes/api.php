@@ -56,7 +56,11 @@ Route::group(['middleware' => ['auth:api']], function(){
     Route::post('customer/{id}/update', [APIController::class, 'my_company_customer_update']);
     // Sales
     Route::get('branch/{id}/sales', [APIController::class, 'my_branch_sales_list']);
+    Route::get('branch/{id}/sales/kitchen', [APIController::class, 'my_branch_sales_kitchen_list']);
+    Route::get('branch/{id}/sales/tickets', [APIController::class, 'my_branch_sales_tickets_list']);
     Route::post('sales/create', [APIController::class, 'my_company_sale_create']);
+    Route::get('sales/{id}', [APIController::class, 'my_company_sale']);
+    Route::post('sales/{id}/update/status', [APIController::class, 'my_company_sale_update_status']);
     // Cashiers
     Route::get('company/{id}/cashier/list', [APIController::class, 'my_company_cashiers_list']);
     Route::get('cashier/{id}', [APIController::class, 'my_company_cashier']);

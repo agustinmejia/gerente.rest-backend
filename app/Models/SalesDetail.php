@@ -16,4 +16,8 @@ class SalesDetail extends Model
         'quantity',
         'additional_product'
     ];
+
+    public function product(){
+        return $this->belongsTo('\App\Models\Product', 'product_id');
+    }
 }

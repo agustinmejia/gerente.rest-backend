@@ -21,7 +21,8 @@ class DatabaseSeeder extends Seeder
             ProductCategoriesTableSeeder::class,
             PeopleTableSeeder::class,
             CustomerTableSeeder::class,
-            SuscriptionsTypeTableSeeder::class
+            SuscriptionsTypeTableSeeder::class,
+            SalesStatusTableSeeder::class
         ]);
     }
 }

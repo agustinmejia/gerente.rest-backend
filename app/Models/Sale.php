@@ -17,6 +17,7 @@ class Sale extends Model
         'sale_number',
         'payment_type',
         'sale_type',
+        'sales_status_id',
         'total',
         'discount',
         'paid_out',
@@ -25,7 +26,23 @@ class Sale extends Model
         'observations'
     ];
 
+    public function employe(){
+        return $this->belongsTo('\App\Models\User', 'user_id');
+    }
+
     public function customer(){
         return $this->belongsTo('\App\Models\Customer', 'customer_id');
+    }
+
+    public function branch(){
+        return $this->belongsTo('\App\Models\Branch', 'branch_id');
+    }
+
+    public function details(){
+        return $this->hasMany(SalesDetail::class);
+    }
+
+    public function status(){
+        return $this->belongsTo('\App\Models\SalesStatus', 'sales_status_id');
     }
 }
