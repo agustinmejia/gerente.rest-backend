@@ -111,10 +111,24 @@ class APIController extends Controller
                 'city_id' => $request->city,
             ]);
 
+            // Create branch
             $branch = Branch::create([
                 'company_id' => $company->id,
                 'name' => 'Casa matriz',
+                'phones' => 'No definido',
+                'address' => 'No definido',
                 'city_id' => $request->city,
+            ]);
+
+            // Create test product
+            $category = ProductCategory::where('deleted_at', NULL)->first();
+            Product::create([
+                'company_id' => $company->id,
+                'product_category_id' => $category ? $category->id : NULL,
+                'name' => 'Hamburguesa',
+                'type' => 'Sencilla',
+                'short_description' => 'Producto de prueba, puedes editarlo o eliminarlo.',
+                'price' => 12,
             ]);
 
             $user = User::where('id', $user->id)->with(['roles'])->first();
@@ -308,10 +322,9 @@ class APIController extends Controller
 
     public function my_company_products_by_category_list($id){
         try{
-            $products_category = ProductCategory::with(['products.stock.branch' => function ($query) use ($id){
-                                    return $query->where('company_id',$id)->where('deleted_at', NULL);
-                                }])
-                                ->whereRaw("(company_id = $id or company_id is NULL)")->get();
+            $products_category = ProductCategory::with(['products' => function ($query) use ($id){
+                                    return $query->where('products.company_id',$id)->where('deleted_at', NULL);
+                                }, 'products.stock.branch'])->get();
             return response()->json(['products_category' => $products_category]);
         } catch (\Throwable $th) {
             return response()->json([ 'error' => 'Error en el servidor.' ]);
