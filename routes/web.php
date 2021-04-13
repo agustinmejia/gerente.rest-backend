@@ -2,11 +2,14 @@
 
 use Illuminate\Support\Facades\Route;
 
+use Laravel\Socialite\Facades\Socialite;
+
 // Controllers
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\UsersController;
 use App\Http\Controllers\RolesController;
 use App\Http\Controllers\CompaniesController;
+use App\Http\Controllers\Auth\LoginController;
 
 /*
 |--------------------------------------------------------------------------
@@ -41,5 +44,9 @@ Route::group(['middleware' => ['auth']], function () {
     Route::get('companies/{company}/braches/{brach}/view', [CompaniesController::class, 'braches_view'])->name('companies.braches.view');
 
 });
+
+// Socialite routes
+Route::get('/login/{social}', [LoginController::class, 'redirectToSocialProvider']);
+Route::get('/login/{social}/callback', [LoginController::class, 'handleProviderSocialCallback']);
 
 Auth::routes();

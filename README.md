@@ -9,7 +9,7 @@ Plataforma web para administración de restaurantes y negocios de comida rápida
 * Instalar composer [Instrucciones](https://www.digitalocean.com/community/tutorials/how-to-install-and-use-composer-on-ubuntu-20-04-es).
 * Instalar las extensiones de PHP requeridas en la documentación de laravel
 ```
-sudo apt-get install php7.4-mbstring php7.4-intl php7.4-dom
+sudo apt-get install php7.4-mbstring php7.4-intl php7.4-dom php7.4-gd
 ```
 * Instalar nodejs 14.X [instrucciones](https://computingforgeeks.com/install-node-js-14-on-ubuntu-debian-linux/)
 ```
