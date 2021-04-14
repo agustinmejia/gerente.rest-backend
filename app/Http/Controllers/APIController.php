@@ -34,35 +34,23 @@ class APIController extends Controller
         $user = null;
         $token = null;
 
-        if($request->social_login){
-            $user = User::where('email', $request->email)->with(['roles', 'suscription'])->where('status', 1)->where('deleted_at', NULL)->first() ?? $this->new_owner($request);
-            $token = $user->createToken('appxiapi')->accessToken;
+        $credentials = ['email' => $request->email, 'password' => $request->password];
+        if (Auth::attempt($credentials)) {
+            $auth = Auth::user();
+            $token = $auth->createToken('gerente.rest')->accessToken;
+            $user = User::where('id', $auth->id)->with(['roles', 'suscription'])->where('status', 1)->where('deleted_at', NULL)->first();
+            
+            if($user->roles){
+                if($user->roles[0]->id == 1){
+                    return response()->json(['error' => "No tienes permiso para ingresar a nuestra plataforma con estos credenciales."]);
+                }
+            }
 
             // Actualizar token de firebase
             if($request->firebase_token){
-                User::where('id', $user->id)->update([
-                    'firebase_token' => $request->firebase_token
-                ]);
-            }
-        }else{
-            $credentials = ['email' => $request->email, 'password' => $request->password];
-            if (Auth::attempt($credentials)) {
-                $auth = Auth::user();
-                $token = $auth->createToken('gerente.rest')->accessToken;
-                $user = User::where('id', $auth->id)->with(['roles', 'suscription'])->where('status', 1)->where('deleted_at', NULL)->first();
-                
-                if($user->roles){
-                    if($user->roles[0]->id == 1){
-                        return response()->json(['error' => "No tienes permiso para ingresar a nuestra plataforma con estos credenciales."]);
-                    }
-                }
-
-                // Actualizar token de firebase
-                if($request->firebase_token){
-                    $user_update = User::findOrFail($user->id);
-                    $user_update->firebase_token = $request->firebase_token;
-                    $user_update->save();
-                }
+                $user_update = User::findOrFail($user->id);
+                $user_update->firebase_token = $request->firebase_token;
+                $user_update->save();
             }
         }
 
@@ -78,8 +66,8 @@ class APIController extends Controller
     }
 
     public function register(Request $request){
-        DB::beginTransaction();
-        try {
+        // DB::beginTransaction();
+        // try {
             if(User::where('email', $request->email)->first()){
                 return response()->json(['error' => 'El Email ingresado ya existe, intenta con otro!']);
             }
@@ -87,6 +75,7 @@ class APIController extends Controller
             $user = User::create([
                 'name' => $request->firstName,
                 'email' => $request->email,
+                'avatar' => $request->avatar ?? '../images/user.svg',
                 'password' => bcrypt($request->password)
             ]);
             $user->assignRole('owner');
@@ -138,12 +127,12 @@ class APIController extends Controller
             $user_company_info = $this->user_company_info($user);
             $company = $user_company_info['company'];
 
-            DB::commit();
+            // DB::commit();
             return response()->json(['user' => $user, 'company' => $company, 'branch' => $branch, 'token' => $token]);
-        } catch (\Throwable $th) {
-            DB::rollback();
-            return response()->json(['error' => 'Ocurrió un error inesperado!']);
-        }
+        // } catch (\Throwable $th) {
+        //     DB::rollback();
+        //     return response()->json(['error' => 'Ocurrió un error inesperado!']);
+        // }
     }
 
     public function user_company_info($user){
