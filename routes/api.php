@@ -55,7 +55,7 @@ Route::group(['middleware' => ['auth:api']], function(){
     Route::post('customer/create', [APIController::class, 'my_company_customer_create']);
     Route::post('customer/{id}/update', [APIController::class, 'my_company_customer_update']);
     // Sales
-    Route::get('branch/{id}/sales', [APIController::class, 'my_branch_sales_list']);
+    Route::get('branch/{id}/sales/{user_id}', [APIController::class, 'my_branch_sales_list']);
     Route::get('branch/{id}/sales/kitchen', [APIController::class, 'my_branch_sales_kitchen_list']);
     Route::get('branch/{id}/sales/tickets', [APIController::class, 'my_branch_sales_tickets_list']);
     Route::post('sales/create', [APIController::class, 'my_company_sale_create']);
@@ -75,10 +75,11 @@ Route::group(['middleware' => ['auth:api']], function(){
     Route::post('company/{id}/employes/create', [APIController::class, 'my_company_employes_create']);
     Route::post('employe/{id}/update', [APIController::class, 'my_company_employes_update']);
     Route::get('employe/{id}/delete', [APIController::class, 'my_company_employes_delete']);
-
+    // Config
+    Route::post('config/profile/{id}/update', [APIController::class, 'profile_update']);
 
     // Funcionales
     Route::get('roles/list', [RolesController::class, 'list_alt']);
-
+    Route::get('comapny/{company_id}/metrcis/{user_id}', [APIController::class, 'get_metrics']);
 });
 // Route::get('print', [PrintController::class, 'print']);

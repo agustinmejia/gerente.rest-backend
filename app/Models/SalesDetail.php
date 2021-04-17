@@ -20,4 +20,8 @@ class SalesDetail extends Model
     public function product(){
         return $this->belongsTo('\App\Models\Product', 'product_id');
     }
+
+    public function sale(){
+        return $this->belongsTo('\App\Models\Sale', 'sale_id');
+    }
 }

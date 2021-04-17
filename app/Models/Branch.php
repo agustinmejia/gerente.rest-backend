@@ -32,4 +32,8 @@ class Branch extends Model
     public function city(){
         return $this->belongsTo('\App\Models\City', 'city_id');
     }
+
+    public function sales(){
+        return $this->hasMany('\App\Models\Sale', 'branch_id');
+    }
 }

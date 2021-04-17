@@ -45,4 +45,8 @@ class Sale extends Model
     public function status(){
         return $this->belongsTo('\App\Models\SalesStatus', 'sales_status_id');
     }
+
+    public function cashier(){
+        return $this->belongsTo('\App\Models\Cashier', 'cashier_id');
+    }
 }

@@ -35,7 +35,7 @@ class APIController extends Controller
         $token = null;
 
         if($request->social_login){
-            $user = User::where('email', $request->email)->with(['roles', 'suscription'])->where('status', 1)->where('deleted_at', NULL)->first() ?? $this->new_owner($request);
+            $user = User::where('email', $request->email)->with(['roles', 'suscription', 'owner.person', 'employe.person'])->where('status', 1)->where('deleted_at', NULL)->first() ?? $this->new_owner($request);
             $token = $user->createToken('appxiapi')->accessToken;
 
             // Actualizar token de firebase
@@ -49,8 +49,7 @@ class APIController extends Controller
             if (Auth::attempt($credentials)) {
                 $auth = Auth::user();
                 $token = $auth->createToken('gerente.rest')->accessToken;
-                $user = User::where('id', $auth->id)->with(['roles', 'suscription'])->where('status', 1)->where('deleted_at', NULL)->first();
-                
+                $user = User::where('id', $auth->id)->with(['roles', 'suscription', 'owner.person', 'employe.person'])->where('status', 1)->where('deleted_at', NULL)->first();
                 if($user->roles){
                     if($user->roles[0]->id == 1){
                         return response()->json(['error' => "No tienes permiso para ingresar a nuestra plataforma con estos credenciales."]);
@@ -131,7 +130,7 @@ class APIController extends Controller
                 'price' => 12,
             ]);
 
-            $user = User::where('id', $user->id)->with(['roles'])->first();
+            $user = User::where('id', $user->id)->with(['roles', 'suscription', 'owner.person', 'employe.person'])->first();
             $token = $user->createToken('gerente.rest')->accessToken;
 
             // Company info
@@ -157,7 +156,7 @@ class APIController extends Controller
             $company = Company::where('owner_id', $user->owner->id)->where('deleted_at', NULL)->first();
             $branch = Branch::where('company_id', $company->id)->where('status', 1)->where('deleted_at', NULL)->first();
         }else{
-            $employe = Employe::where('user_id', $user->id)->first();
+            $employe = Employe::where('id', $user->employe->id)->first();
             if($employe){
                 $branch = Branch::findOrFail($employe->branch_id);
                 $company = Company::findOrFail($branch->company_id);
@@ -450,7 +449,8 @@ class APIController extends Controller
             ]);
 
             $customer = Customer::create([
-                'person_id' => $person->id
+                'person_id' => $person->id,
+                'company_id' => $request->company_id
             ]);
 
             $customer = Customer::with(['person', 'company'])->where('id', $customer->id)->first();
@@ -486,10 +486,10 @@ class APIController extends Controller
     }
 
     // Sales
-    public function my_branch_sales_list($id){
+    public function my_branch_sales_list($id, $user_id){
         try{
             $sales = Sale::with(['customer.person', 'status'])
-                            ->where('branch_id', $id)->where('deleted_at', NULL)
+                            ->where('branch_id', $id)->where('user_id', $user_id)->where('deleted_at', NULL)
                             ->whereDate('created_at', Carbon::now())->orderBY('id', 'DESC')->get();
             return response()->json(['sales' => $sales]);
         } catch (\Throwable $th) {
@@ -740,7 +740,7 @@ class APIController extends Controller
                 'name' => $request->first_name,
                 'email' => $request->email,
                 'password' => bcrypt($request->password),
-                'avatar' => $image
+                'avatar' => $image ?? '../images/user.svg'
             ]);
 
             $role = Role::find($request->role_id);
@@ -841,5 +841,104 @@ class APIController extends Controller
             DB::rollback();
             return response()->json([ 'error' => 'Ocurrió un error inesperado!' ]);
         }
+    }
+
+    // Configuration
+    public function profile_update($id, Request $request){
+        DB::beginTransaction();
+        try {
+            if(User::where('email', $request->email)->where('id', '<>', $id)->first()){
+                return response()->json(['error' => 'El Email ingresado ya existe, intenta con otro!']);
+            }
+
+            $image = $this->save_image($request->file('image'), 'employes');
+            $user = User::find($id);
+            $user->name = $request->first_name;
+            $user->email = $request->email;
+            if($request->password){
+                $user->password = bcrypt($request->password);
+            }
+            if($image){
+                $user->avatar = $image;   
+            }
+            $user->save();
+
+            // update person
+            $role = ModelHasRole::where('model_type' ,'App\Models\User')->where('model_id', $id)->first();
+            if($role->role_id == 2){
+                $profile = Owner::with(['person'])->where('user_id', $id)->first();
+            }else{
+                $profile = Employe::with(['person'])->where('user_id', $id)->first();
+            }
+            $person = Person::where('id', $profile->person->id)->update([
+                'first_name' => $request->first_name,
+                'last_name' => $request->last_name,
+                'ci_nit' => $request->ci,
+                'phone' => $request->phone,
+                'address' => $request->address
+            ]);
+
+            $user = User::where('id', $id)->with(['roles', 'suscription', 'owner.person', 'employe.person'])->where('status', 1)->where('deleted_at', NULL)->first();
+
+            DB::commit();
+            return response()->json(['profile' => $user]);
+        } catch (\Throwable $th) {
+            DB::rollback();
+            return response()->json([ 'error' => 'Ocurrió un error inesperado!' ]);
+        }
+    }
+
+    public function get_metrics($company_id, $user_id){
+        $cash = 0;
+        $count_sales = 0;
+        $count_products = Product::where('company_id', $company_id)->count();
+        $count_customer = Customer::where('company_id', $company_id)->count();
+        $best_seller = Product::with(['sales'])->where('deleted_at', NULL)->where('company_id', $company_id)->limit(5)->get();
+
+        // Mostrar monto en caja dependiendo si es administrador o empleado
+        $role = ModelHasRole::where('model_type' ,'App\Models\User')->where('model_id', $user_id)->first();
+        if($role->role_id == 2){
+            $sales = Company::with(['branches.sales' => function($query){
+                $query->whereDate('created_at', date('Y-m-d'));
+            }, 'branches.sales.cashier'])->where('id', $company_id)->first();
+            
+        }else{
+            $sales = Company::with(['branches.sales' => function($query) use($user_id){
+                $query->whereDate('created_at', date('Y-m-d'))->where('user_id', $user_id);
+            }, 'branches.sales.cashier'])->where('id', $company_id)->first();
+        }
+        // Obtener contador y sumatoria de ventas
+        foreach ($sales->branches as $branche) {
+            foreach ($branche->sales as $sale) {
+                if($sale->cashier->status == 1){
+                    $cash += $sale->total - $sale->discount;
+                    $count_sales++;
+                }
+            }
+        }
+
+        // Obtener Ultimos 7 dias de ventas
+        $current_sales = Sale::with(['branch' => function($query) use($company_id){
+            $query->where('company_id', $company_id);
+        }])->where('deleted_at', NULL)
+        ->groupBy(DB::raw('Date(created_at)'))
+        ->orderBy('created_at')
+        ->limit(7)
+        ->get(array(
+            DB::raw('Date(created_at) as date'),
+            DB::raw('SUM(total - discount) as total'),
+            DB::raw('deleted_at as gasto')
+        ));
+
+        $cont = 0;
+        foreach ($current_sales as $sale) {
+            $gastos = CashierDetail::with(['cashier.branch' => function($query) use($company_id){
+                $query->where('company_id', $company_id);
+            }])->whereDate('created_at', $sale->date)->where('type', 2)->first(DB::raw('SUM(amount) as total'));
+            $current_sales[$cont]->gasto = $gastos['total'] ?? 0;
+            $cont++;
+        }
+
+        return response()->json([ 'cash' => $cash, 'count_sales' => $count_sales, 'count_products' => $count_products, 'count_customer' =>  $count_customer, 'current_sales' => $current_sales, 'best_seller' => $best_seller ]);
     }
 }
