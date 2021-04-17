@@ -77,8 +77,8 @@ class APIController extends Controller
     }
 
     public function register(Request $request){
-        DB::beginTransaction();
-        try {
+        // DB::beginTransaction();
+        // try {
             if(User::where('email', $request->email)->first()){
                 return response()->json(['error' => 'El Email ingresado ya existe, intenta con otro!']);
             }
@@ -86,6 +86,7 @@ class APIController extends Controller
             $user = User::create([
                 'name' => $request->firstName,
                 'email' => $request->email,
+                'avatar' => $request->avatar ?? '../images/user.svg',
                 'password' => bcrypt($request->password)
             ]);
             $user->assignRole('owner');
@@ -137,12 +138,12 @@ class APIController extends Controller
             $user_company_info = $this->user_company_info($user);
             $company = $user_company_info['company'];
 
-            DB::commit();
+            // DB::commit();
             return response()->json(['user' => $user, 'company' => $company, 'branch' => $branch, 'token' => $token]);
-        } catch (\Throwable $th) {
-            DB::rollback();
-            return response()->json(['error' => 'Ocurrió un error inesperado!']);
-        }
+        // } catch (\Throwable $th) {
+        //     DB::rollback();
+        //     return response()->json(['error' => 'Ocurrió un error inesperado!']);
+        // }
     }
 
     public function user_company_info($user){
