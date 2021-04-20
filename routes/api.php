@@ -81,6 +81,6 @@ Route::group(['middleware' => ['auth:api']], function(){
 
     // Funcionales
     Route::get('roles/list', [RolesController::class, 'list_alt']);
-    Route::get('comapny/{company_id}/metrcis/{user_id}', [APIController::class, 'get_metrics']);
+    Route::get('comapny/{company_id}/metrics/{user_id}', [APIController::class, 'get_metrics']);
 });
 // Route::get('print', [PrintController::class, 'print']);

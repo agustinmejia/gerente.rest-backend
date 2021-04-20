@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Carbon\Carbon;
 
 // Medels
@@ -35,7 +36,13 @@ class APIController extends Controller
         $token = null;
 
         if($request->social_login){
-            $user = User::where('email', $request->email)->with(['roles', 'suscription', 'owner.person', 'employe.person'])->where('status', 1)->where('deleted_at', NULL)->first() ?? $this->new_owner($request);
+            if(!$request->social_token){
+                return response()->json(['error' => "Error en la petición."]);
+            }
+            $user = User::where('email', $request->email)->with(['roles', 'suscription', 'owner.person', 'employe.person'])->where('status', 1)->where('deleted_at', NULL)->first();
+            if(!$user){
+                return response()->json(['error' => "No existe ningún usuario con este email, debes registrarte."]);
+            }
             $token = $user->createToken('appxiapi')->accessToken;
 
             // Actualizar token de firebase
@@ -70,15 +77,21 @@ class APIController extends Controller
             $user_company_info = $this->user_company_info($user);
             $company = $user_company_info['company'];
             $branch = $user_company_info['branch'];
-            return response()->json(['user' => $user, 'company' => $company, 'branch' => $branch,'token' => $token]);
+            return response()->json(['user' => $user, 'company' => $company, 'branch' => $branch,'token' => $token, 'social_token' => $request->social_token ?? null]);
         }else{
             return response()->json(['error' => "Usuario o contraseña incorrectos!"]);
         }
     }
 
     public function register(Request $request){
-        // DB::beginTransaction();
-        // try {
+        if($request->social_register){
+            $password = Str::random(10);
+        }else{
+            $password = $request->password;
+        }
+
+        DB::beginTransaction();
+        try {
             if(User::where('email', $request->email)->first()){
                 return response()->json(['error' => 'El Email ingresado ya existe, intenta con otro!']);
             }
@@ -87,7 +100,7 @@ class APIController extends Controller
                 'name' => $request->firstName,
                 'email' => $request->email,
                 'avatar' => $request->avatar ?? '../images/user.svg',
-                'password' => bcrypt($request->password)
+                'password' => bcrypt($password)
             ]);
             $user->assignRole('owner');
 
@@ -138,12 +151,12 @@ class APIController extends Controller
             $user_company_info = $this->user_company_info($user);
             $company = $user_company_info['company'];
 
-            // DB::commit();
+            DB::commit();
             return response()->json(['user' => $user, 'company' => $company, 'branch' => $branch, 'token' => $token]);
-        // } catch (\Throwable $th) {
-        //     DB::rollback();
-        //     return response()->json(['error' => 'Ocurrió un error inesperado!']);
-        // }
+        } catch (\Throwable $th) {
+            DB::rollback();
+            return response()->json(['error' => 'Ocurrió un error inesperado!']);
+        }
     }
 
     public function user_company_info($user){
@@ -648,7 +661,12 @@ class APIController extends Controller
     // Cashiers
     public function my_company_cashiers_list($id){
         try{
-            $cashiers = Cashier::with(['user', 'branch', 'details'])->where('branch_id', $id)
+            $branches = [];
+            // Obtener todas las sucursales del restaurante
+            foreach (Branch::where('company_id', $id)->get('id') as $item) {
+                array_push($branches, $item->id);
+            }
+            $cashiers = Cashier::with(['user', 'branch', 'details'])->whereIn('branch_id', $branches)
                         ->where('deleted_at', NULL)->orderBY('id', 'DESC')->get();
             return response()->json(['cashiers' => $cashiers]);
         } catch (\Throwable $th) {
@@ -966,17 +984,18 @@ class APIController extends Controller
         }
 
         // Obtener Ultimos 7 dias de ventas
-        $current_sales = Sale::with(['branch' => function($query) use($company_id){
-            $query->where('company_id', $company_id);
-        }])->where('deleted_at', NULL)
-        ->groupBy(DB::raw('Date(created_at)'))
-        ->orderBy('created_at')
-        ->limit(7)
-        ->get(array(
-            DB::raw('Date(created_at) as date'),
-            DB::raw('SUM(total - discount) as total'),
-            DB::raw('deleted_at as gasto')
-        ));
+        $branches = [];
+        // Obtener todas las sucursales del restaurante
+        foreach (Branch::where('company_id', $company_id)->get('id') as $item) {
+            array_push($branches, $item->id);
+        }
+        $current_sales = Sale::whereIn('branch_id', $branches)->where('deleted_at', NULL)
+                                ->groupBy(DB::raw('Date(created_at)'))->orderBy('created_at')->limit(7)
+                                ->get(array(
+                                    DB::raw('Date(created_at) as date'),
+                                    DB::raw('SUM(total - discount) as total'),
+                                    DB::raw('deleted_at as gasto')
+                                ));
 
         $cont = 0;
         foreach ($current_sales as $sale) {
