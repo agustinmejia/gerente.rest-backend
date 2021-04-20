@@ -19,6 +19,7 @@ class CreateSalesDetailsTable extends Migration
             $table->foreignId('product_id')->nullable()->constrained('products');
             $table->decimal('price', 10, 2)->nullable()->default(0);
             $table->smallInteger('quantity')->nullable()->default(1);
+            $table->decimal('quantity_decrement', 10, 2)->nullable()->default(0);
             $table->smallInteger('additional_product')->nullable();
             $table->timestamps();
             $table->softDeletes();

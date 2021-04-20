@@ -14,7 +14,8 @@ class SalesDetail extends Model
         'product_id',
         'price',
         'quantity',
-        'additional_product'
+        'additional_product',
+        'quantity_decrement'
     ];
 
     public function product(){

@@ -233,7 +233,7 @@ class APIController extends Controller
                 'company_id' => $company->id,
                 'name' => $request->name,
                 'city_id' => $request->city,
-                'location' => $request->location,
+                'location' => json_encode($request->location),
                 'phones' => $request->phones,
                 'address' => $request->address
             ]);
@@ -252,7 +252,7 @@ class APIController extends Controller
             $branch = Branch::where('id', $id)->update([
                 'name' => $request->name,
                 'city_id' => $request->city,
-                'location' => $request->location,
+                'location' => json_encode($request->location),
                 'phones' => $request->phones,
                 'address' => $request->address
             ]);
@@ -489,7 +489,7 @@ class APIController extends Controller
     // Sales
     public function my_branch_sales_list($id, $user_id){
         try{
-            $sales = Sale::with(['customer.person', 'status'])
+            $sales = Sale::with(['customer.person', 'status', 'details.product'])
                             ->where('branch_id', $id)->where('user_id', $user_id)->where('deleted_at', NULL)
                             ->whereDate('created_at', Carbon::now())->orderBY('id', 'DESC')->get();
             return response()->json(['sales' => $sales]);
@@ -502,7 +502,7 @@ class APIController extends Controller
         try{
             $sales = Sale::with(['details.product', 'status'])
                             ->where('branch_id', $id)->where('sales_status_id', 2)->where('deleted_at', NULL)
-                            ->whereDate('created_at', Carbon::now())->orderBY('id', 'ASC')->get();
+                            ->whereDate('created_at', date('Y-m-d'))->orderBY('id', 'ASC')->get();
             return response()->json(['sales' => $sales]);
         } catch (\Throwable $th) {
             return response()->json([ 'error' => 'Ocurrió un error inesperado!' ]);
@@ -548,11 +548,28 @@ class APIController extends Controller
 
             // Create sale details
             foreach ($request->sale_details as $item) {
+                // Si el producto está registrado en almacen se disminuye su stock
+                $product_branches = ProductBranch::where('product_id', $item['id'])->where('branch_id', $request->branch_id)->first();
+                $decrement_stock = 0;
+                if($product_branches){
+                    $product = ProductBranch::find($product_branches->id);
+                    // Si el stock es mayor a la compra, decrementamos la compra
+                    if($product->stock >= $item['quantity']){
+                        $decrement_stock = $item['quantity'];
+                    }else{
+                        // si la compra es mayor al stock, decrementamos el stock
+                        $decrement_stock = $product->stock;
+                    }
+                    $product->stock -= $decrement_stock;
+                    $product->save();
+                }
+
                 SalesDetail::create([
                     'sale_id' => $sale->id,
                     'product_id' => $item['id'],
                     'price' => $item['price'],
                     'quantity' => $item['quantity'],
+                    'quantity_decrement' => $decrement_stock
                 ]);
             }
 
@@ -595,6 +612,36 @@ class APIController extends Controller
             return response()->json(['sale' => $id]);
         } catch (\Throwable $th) {
             return response()->json([ 'error' => 'Ocurrió un error inesperado!' ]);
+        }
+    }
+
+    public function my_company_sale_delete($id){
+        DB::beginTransaction();
+        try {
+            // Elimianr venta
+            $sale = Sale::findOrFail($id);
+            $sale->deleted_at = Carbon::now();
+            $sale->save();
+
+            // Eliminar asiento en caja
+            CashierDetail::where('sale_id', $id)->update([
+                'deleted_at' => Carbon::now()
+            ]);
+
+            // Devolver stock de productos
+            $sales_details = salesDetail::where('sale_id', $id)->get();
+            foreach ($sales_details as $item) {
+                if($item->quantity_decrement > 0){
+                    ProductBranch::where('branch_id', $sale->branch_id)->where('product_id', $item->product_id)
+                    ->increment('stock', $item->quantity_decrement);
+                }
+            }
+
+            DB::commit();
+            return response()->json(['sale_id' => $id]);
+        } catch (\Throwable $th) {
+            DB::rollback();
+            return response()->json(['error' => 'Ocurrió un error inesperado!']);
         }
     }
 
