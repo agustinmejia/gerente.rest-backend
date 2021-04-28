@@ -15,8 +15,8 @@ class CreateBranchScheduleTable extends Migration
     {
         Schema::create('branch_schedule', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('branch_id')->constrained();
-            $table->foreignId('schedule_id')->constrained();
+            $table->foreignId('branch_id')->nullable()->constrained();
+            $table->foreignId('schedule_id')->nullable()->constrained();
             $table->timestamps();
         });
     }

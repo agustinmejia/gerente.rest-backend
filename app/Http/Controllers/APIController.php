@@ -17,6 +17,7 @@ use App\Models\Person;
 use App\Models\Owner;
 use App\Models\Employe;
 use App\Models\Company;
+use App\Models\CompaniesType;
 use App\Models\Branch;
 use App\Models\ProductCategory;
 use App\Models\Product;
@@ -43,7 +44,7 @@ class APIController extends Controller
             if(!$user){
                 return response()->json(['error' => "No existe ningún usuario con este email, debes registrarte."]);
             }
-            $token = $user->createToken('appxiapi')->accessToken;
+            $token = $user->createToken('gerente.rest')->accessToken;
 
             // Actualizar token de firebase
             if($request->firebase_token){
@@ -117,11 +118,14 @@ class APIController extends Controller
                 'user_id' => $user->id
             ]);
 
+            $type = CompaniesType::where('status', 1)->where('deleted_at', NULL)->first();
+
             // Create company
             $company = Company::create([
                 'owner_id' => $owner->id,
                 'name' => $request->companyName,
                 'city_id' => $request->city,
+                'companies_type_id' => $type ? $type->id : null
             ]);
 
             // Create branch
@@ -636,13 +640,18 @@ class APIController extends Controller
             $sale->deleted_at = Carbon::now();
             $sale->save();
 
+            // Eliminar detalle de caja
+            SalesDetail::where('sale_id', $id)->update([
+                'deleted_at' => Carbon::now()
+            ]);
+
             // Eliminar asiento en caja
             CashierDetail::where('sale_id', $id)->update([
                 'deleted_at' => Carbon::now()
             ]);
 
             // Devolver stock de productos
-            $sales_details = salesDetail::where('sale_id', $id)->get();
+            $sales_details = SalesDetail::where('sale_id', $id)->get();
             foreach ($sales_details as $item) {
                 if($item->quantity_decrement > 0){
                     ProductBranch::where('branch_id', $sale->branch_id)->where('product_id', $item->product_id)
@@ -954,10 +963,11 @@ class APIController extends Controller
         }
     }
 
+    // Reports
     public function get_metrics($company_id, $user_id){
         $cash = 0;
         $count_sales = 0;
-        $count_products = Product::where('company_id', $company_id)->count();
+        $count_products = Product::where('company_id', $company_id)->where('deleted_at', NULL)->count();
         $count_customer = Customer::where('company_id', $company_id)->count();
         $best_seller = Product::with(['sales'])->where('deleted_at', NULL)->where('company_id', $company_id)->limit(5)->get();
 
@@ -976,7 +986,7 @@ class APIController extends Controller
         // Obtener contador y sumatoria de ventas
         foreach ($sales->branches as $branche) {
             foreach ($branche->sales as $sale) {
-                if($sale->cashier->status == 1){
+                if($sale->cashier->status == 1 && $sale->deleted_at == NULL){
                     $cash += $sale->total - $sale->discount;
                     $count_sales++;
                 }
@@ -1007,5 +1017,47 @@ class APIController extends Controller
         }
 
         return response()->json([ 'cash' => $cash, 'count_sales' => $count_sales, 'count_products' => $count_products, 'count_customer' =>  $count_customer, 'current_sales' => $current_sales, 'best_seller' => $best_seller ]);
+    }
+
+    public function report_sales($id, Request $request){
+        $query_date = 1;
+        switch ($request->type) {
+            case 'day':
+                $query_date = "CONCAT(YEAR(created_at),'-',MONTH(created_at),'-',DAY(created_at)) = '".date('Y-n-d', strtotime($request->date))."'";
+                break;
+            case 'month':
+                $query_date = "(YEAR(created_at) = '$request->year' and MONTH(created_at) = '$request->month')";
+                break;
+            case 'range':
+                $query_date = "( CONCAT(YEAR(created_at),'-',MONTH(created_at),'-',DAY(created_at)) >= '".date('Y-n-d', strtotime($request->start))."' and CONCAT(YEAR(created_at),'-',MONTH(created_at),'-',DAY(created_at)) <= '".date('Y-n-d', strtotime($request->finish))."' )";
+                break;
+        }
+
+        $group = $request->group;
+        $branches = [];
+        $discount = 0;
+        // Obtener todas las sucursales del restaurante
+        foreach (Branch::where('company_id', $id)->get('id') as $item) {
+            array_push($branches, $item->id);
+        }
+        if($group == 'sales'){
+            // Obtener reporte de ventas detallado
+            $report = Sale::with(['details.product', 'customer.person', 'employe'])
+                        ->whereIn('branch_id', $branches)->where('deleted_at', NULL)
+                        ->whereRaw($query_date)->get();
+        }else{
+            // Obtener reporte de ventas agrupado por productos
+            $report = Product::with(['sales' => function($q) use($query_date) {
+                $q->where('deleted_at', NULL)->whereRaw($query_date);
+            }])->where('company_id', $id)->get();
+
+            // Obtener el dato auxiliar de el total de descuentos, debido a que puede que el descuento se repita
+            // debido a la forma de agrupar la consulta
+            $sales = Sale::whereIn('branch_id', $branches)->where('deleted_at', NULL)->whereRaw($query_date)->get();
+            foreach ($sales as $item) {
+                $discount += $item->discount;
+            }
+        }
+        return response()->json([ 'report' => $report, 'group' => $group, 'discount' => $discount ]);
     }
 }

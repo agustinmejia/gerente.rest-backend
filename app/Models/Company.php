@@ -14,7 +14,7 @@ class Company extends Model
     use HasSlug;
 
     protected $fillable = [
-        'owner_id', 'name', 'slug', 'slogan', 'short_description', 'long_description', 'city_id', 'address', 'phones', 'logos', 'banners', 'nit', 'activity_description', 'email'
+        'owner_id', 'companies_type_id', 'name', 'slug', 'slogan', 'short_description', 'long_description', 'city_id', 'address', 'phones', 'logos', 'banners', 'nit', 'activity_description', 'email'
     ];
 
     public function getSlugOptions() : SlugOptions{
@@ -27,8 +27,12 @@ class Company extends Model
         return 'slug';
     }
 
+    public function type(){
+        return $this->belongsTo(CompaniesType::class, 'companies_type_id');
+    }
+
     public function city(){
-        return $this->belongsTo('\App\Models\City', 'city_id');
+        return $this->belongsTo(City::class, 'city_id');
     }
 
     public function branches(){

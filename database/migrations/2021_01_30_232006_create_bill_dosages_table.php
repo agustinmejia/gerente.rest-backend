@@ -15,7 +15,7 @@ class CreateBillDosagesTable extends Migration
     {
         Schema::create('bill_dosages', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('company_id')->constrained();
+            $table->foreignId('company_id')->nullable()->constrained();
             $table->string('authorization_number')->nullable();
             $table->text('dosing_cock')->nullable();
             $table->date('limit_date')->nullable();

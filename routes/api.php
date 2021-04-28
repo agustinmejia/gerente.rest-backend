@@ -78,6 +78,8 @@ Route::group(['middleware' => ['auth:api']], function(){
     Route::get('employe/{id}/delete', [APIController::class, 'my_company_employes_delete']);
     // Config
     Route::post('config/profile/{id}/update', [APIController::class, 'profile_update']);
+    // Reports
+    Route::post('company/{id}/report/sales', [APIController::class, 'report_sales']);
 
     // Funcionales
     Route::get('roles/list', [RolesController::class, 'list_alt']);

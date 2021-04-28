@@ -15,8 +15,8 @@ class CreateCompaniesTable extends Migration
     {
         Schema::create('companies', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('owner_id')->constrained('owners');
-            $table->string('name');
+            $table->foreignId('owner_id')->nullable()->constrained('owners');
+            $table->string('name')->nullable();
             $table->string('slug')->unique();
             $table->string('slogan')->nullable();
             $table->string('short_description')->nullable();
