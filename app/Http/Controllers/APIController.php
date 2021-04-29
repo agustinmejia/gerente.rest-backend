@@ -171,7 +171,7 @@ class APIController extends Controller
         $company = null;
         $branch = null;
         if($role->role_id == 2){
-            $company = Company::where('owner_id', $user->owner->id)->where('deleted_at', NULL)->first();
+            $company = Company::with('city')->where('owner_id', $user->owner->id)->where('deleted_at', NULL)->first();
             $branch = Branch::where('company_id', $company->id)->where('status', 1)->where('deleted_at', NULL)->first();
         }else{
             $employe = Employe::where('id', $user->employe->id)->first();
@@ -199,7 +199,9 @@ class APIController extends Controller
             $company->address = $request->address;
             $company->short_description = $request->short_description;
             $company->save();
-            return response()->json(['company' => $company]);
+
+            $company_update = Company::with('city')->where('id', $id)->first();
+            return response()->json(['company' => $company_update]);
         } catch (\Throwable $th) {
             return response()->json(['error' => 'Ocurrió un error inesperado!']);
         }
@@ -1021,15 +1023,19 @@ class APIController extends Controller
 
     public function report_sales($id, Request $request){
         $query_date = 1;
+        $date_report = [];
         switch ($request->type) {
             case 'day':
                 $query_date = "CONCAT(YEAR(created_at),'-',MONTH(created_at),'-',DAY(created_at)) = '".date('Y-n-d', strtotime($request->date))."'";
+                $date_report = ['date' => $request->date];
                 break;
             case 'month':
                 $query_date = "(YEAR(created_at) = '$request->year' and MONTH(created_at) = '$request->month')";
+                $date_report = ['date' => $request->year.'-'.$request->month.'-01'];
                 break;
             case 'range':
                 $query_date = "( CONCAT(YEAR(created_at),'-',MONTH(created_at),'-',DAY(created_at)) >= '".date('Y-n-d', strtotime($request->start))."' and CONCAT(YEAR(created_at),'-',MONTH(created_at),'-',DAY(created_at)) <= '".date('Y-n-d', strtotime($request->finish))."' )";
+                $date_report = ['start' => $request->start, 'finish' => $request->finish];
                 break;
         }
 
@@ -1058,6 +1064,6 @@ class APIController extends Controller
                 $discount += $item->discount;
             }
         }
-        return response()->json([ 'report' => $report, 'group' => $group, 'discount' => $discount ]);
+        return response()->json([ 'report' => $report, 'group' => $group, 'discount' => $discount, 'date' => $date_report ]);
     }
 }
