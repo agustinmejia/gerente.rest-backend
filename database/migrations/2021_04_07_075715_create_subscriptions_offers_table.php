@@ -15,7 +15,7 @@ class CreateSubscriptionsOffersTable extends Migration
     {
         Schema::create('subscriptions_offers', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('suscriptions_type_id')->nullable()->constrained('suscriptions_types');
+            $table->foreignId('subscriptions_type_id')->nullable()->constrained('subscriptions_types');
             $table->decimal('discount', 10, 2)->nullable()->default(0);
             $table->date('start')->nullable();
             $table->date('end')->nullable();

@@ -10,6 +10,6 @@ class SubscriptionsOffer extends Model
     use HasFactory;
 
     protected $fillable = [
-        'suscriptions_type_id', 'discount', 'start', 'end', 'status'
+        'subscriptions_type_id', 'discount', 'start', 'end', 'status'
     ];
 }

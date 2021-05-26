@@ -5,11 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Suscription extends Model
+class SubscriptionsHistory extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'user_id', 'suscriptions_type_id', 'payment_type', 'start', 'end', 'status'
+        'subscription_id', 'user_id', 'amount', 'observations'
     ];
 }

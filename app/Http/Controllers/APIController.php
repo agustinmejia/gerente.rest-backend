@@ -28,6 +28,8 @@ use App\Models\SalesDetail;
 use App\Models\Cashier;
 use App\Models\CashierDetail;
 use App\Models\InventoryHistory;
+use App\Models\Subscription;
+use App\Models\SubscriptionsType;
 
 class APIController extends Controller
 {
@@ -40,7 +42,7 @@ class APIController extends Controller
             if(!$request->social_token){
                 return response()->json(['error' => "Error en la petición."]);
             }
-            $user = User::where('email', $request->email)->with(['roles', 'suscription', 'owner.person', 'employe.person'])->where('status', 1)->where('deleted_at', NULL)->first();
+            $user = User::where('email', $request->email)->with(['roles', 'owner.person', 'employe.person'])->where('status', 1)->where('deleted_at', NULL)->first();
             if(!$user){
                 return response()->json(['error' => "No existe ningún usuario con este email, debes registrarte."]);
             }
@@ -57,7 +59,7 @@ class APIController extends Controller
             if (Auth::attempt($credentials)) {
                 $auth = Auth::user();
                 $token = $auth->createToken('gerente.rest')->accessToken;
-                $user = User::where('id', $auth->id)->with(['roles', 'suscription', 'owner.person', 'employe.person'])->where('status', 1)->where('deleted_at', NULL)->first();
+                $user = User::where('id', $auth->id)->with(['roles', 'owner.person', 'employe.person'])->where('status', 1)->where('deleted_at', NULL)->first();
                 if($user->roles){
                     if($user->roles[0]->id == 1){
                         return response()->json(['error' => "No tienes permiso para ingresar a nuestra plataforma con estos credenciales."]);
@@ -78,7 +80,8 @@ class APIController extends Controller
             $user_company_info = $this->user_company_info($user);
             $company = $user_company_info['company'];
             $branch = $user_company_info['branch'];
-            return response()->json(['user' => $user, 'company' => $company, 'branch' => $branch,'token' => $token, 'social_token' => $request->social_token ?? null]);
+            $subscription = $user_company_info['subscription'];
+            return response()->json(['user' => $user, 'company' => $company, 'branch' => $branch,'token' => $token, 'subscription' => $subscription, 'social_token' => $request->social_token ?? null]);
         }else{
             return response()->json(['error' => "Usuario o contraseña incorrectos!"]);
         }
@@ -148,15 +151,29 @@ class APIController extends Controller
                 'price' => 12,
             ]);
 
-            $user = User::where('id', $user->id)->with(['roles', 'suscription', 'owner.person', 'employe.person'])->first();
+            // Create free subscription
+            $subscriptions_type = SubscriptionsType::where('deleted_at', NULL)->first();
+            if($subscriptions_type){
+                $days = $subscriptions_type->expiration_days ?? 15;
+                $current_date = date('Y-m-d');
+                Subscription::create([
+                    'user_id' => $user->id,
+                    'subscriptions_type_id' => $subscriptions_type->id,
+                    'start' => $current_date,
+                    'end' => date("Y-m-d", strtotime("$current_date +$days days"))
+                ]);
+            }
+
+            $user = User::where('id', $user->id)->with(['roles', 'owner.person', 'employe.person'])->first();
             $token = $user->createToken('gerente.rest')->accessToken;
 
             // Company info
             $user_company_info = $this->user_company_info($user);
             $company = $user_company_info['company'];
+            $subscription = $user_company_info['subscription'];
 
             DB::commit();
-            return response()->json(['user' => $user, 'company' => $company, 'branch' => $branch, 'token' => $token]);
+            return response()->json(['user' => $user, 'company' => $company, 'branch' => $branch, 'token' => $token, 'subscription' => $subscription]);
         } catch (\Throwable $th) {
             DB::rollback();
             return response()->json(['error' => 'Ocurrió un error inesperado!']);
@@ -170,17 +187,23 @@ class APIController extends Controller
         // Get company info
         $company = null;
         $branch = null;
+        $subscription = null;
         if($role->role_id == 2){
             $company = Company::with('city')->where('owner_id', $user->owner->id)->where('deleted_at', NULL)->first();
             $branch = Branch::where('company_id', $company->id)->where('status', 1)->where('deleted_at', NULL)->first();
+            $subscription = Subscription::with('type')->where('user_id', $user->id)->first();
         }else{
             $employe = Employe::where('id', $user->employe->id)->first();
             if($employe){
                 $branch = Branch::findOrFail($employe->branch_id);
                 $company = Company::findOrFail($branch->company_id);
+
+                // Obtener el propietario para consultar la suscripción 
+                $owner = Owner::where('owner_id', $company->owner_id)->first();
+                $subscription = Subscription::with('type')->where('user_id', $owner->user_id)->first();
             }
         }
-        return ['company' => $company, 'branch' => $branch];
+        return ['company' => $company, 'branch' => $branch, 'subscription' => $subscription];
     }
 
     // Company
@@ -698,7 +721,9 @@ class APIController extends Controller
 
         // Si es un egreso verificar que sea menor al monto en caja
         if($request->type == 2){
-            $cashier = Cashier::with(['details'])->where('id', $id)->first();
+            $cashier = Cashier::with(['details' => function($q){
+                $q->where('deleted_at', NULL);
+            }])->where('id', $id)->where('deleted_at', NULL)->first();
             $total = $cashier->opening_amount;
             
             // Recorrer todos los ingresos y sumarlos al monto de apertura
@@ -955,7 +980,7 @@ class APIController extends Controller
                 'address' => $request->address
             ]);
 
-            $user = User::where('id', $id)->with(['roles', 'suscription', 'owner.person', 'employe.person'])->where('status', 1)->where('deleted_at', NULL)->first();
+            $user = User::where('id', $id)->with(['roles', 'owner.person', 'employe.person'])->where('status', 1)->where('deleted_at', NULL)->first();
 
             DB::commit();
             return response()->json(['profile' => $user]);
@@ -1026,7 +1051,7 @@ class APIController extends Controller
         $date_report = [];
         switch ($request->type) {
             case 'day':
-                $query_date = "CONCAT(YEAR(created_at),'-',MONTH(created_at),'-',DAY(created_at)) = '".date('Y-n-d', strtotime($request->date))."'";
+                $query_date = "CONCAT(YEAR(created_at),'-',MONTH(created_at),'-',DAY(created_at)) = '".date('Y-n-j', strtotime($request->date))."'";
                 $date_report = ['date' => $request->date];
                 break;
             case 'month':
@@ -1034,7 +1059,7 @@ class APIController extends Controller
                 $date_report = ['date' => $request->year.'-'.$request->month.'-01'];
                 break;
             case 'range':
-                $query_date = "( CONCAT(YEAR(created_at),'-',MONTH(created_at),'-',DAY(created_at)) >= '".date('Y-n-d', strtotime($request->start))."' and CONCAT(YEAR(created_at),'-',MONTH(created_at),'-',DAY(created_at)) <= '".date('Y-n-d', strtotime($request->finish))."' )";
+                $query_date = "( CONCAT(YEAR(created_at),'-',MONTH(created_at),'-',DAY(created_at)) >= '".date('Y-n-j', strtotime($request->start))."' and CONCAT(YEAR(created_at),'-',MONTH(created_at),'-',DAY(created_at)) <= '".date('Y-n-j', strtotime($request->finish))."' )";
                 $date_report = ['start' => $request->start, 'finish' => $request->finish];
                 break;
         }
@@ -1064,6 +1089,6 @@ class APIController extends Controller
                 $discount += $item->discount;
             }
         }
-        return response()->json([ 'report' => $report, 'group' => $group, 'discount' => $discount, 'date' => $date_report ]);
+        return response()->json([ 'report' => $report, 'group' => $group, 'discount' => $discount, 'date' => $date_report, 'query_date' => $query_date ]);
     }
 }

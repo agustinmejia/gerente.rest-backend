@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CitiesController;
 use App\Http\Controllers\APIController;
 use App\Http\Controllers\RolesController;
+use App\Http\Controllers\SubscriptionsTypesController;
 use App\Http\Controllers\PrintController;
 
 /*
@@ -83,6 +84,7 @@ Route::group(['middleware' => ['auth:api']], function(){
 
     // Funcionales
     Route::get('roles/list', [RolesController::class, 'list_alt']);
+    Route::get('subscriptions_types/list', [SubscriptionsTypesController::class, 'list_alt']);
     Route::get('comapny/{company_id}/metrics/{user_id}', [APIController::class, 'get_metrics']);
 });
 // Route::get('print', [PrintController::class, 'print']);

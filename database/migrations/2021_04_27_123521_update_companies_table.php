@@ -27,6 +27,6 @@ class UpdateCompaniesTable extends Migration
     {
         Schema::table('companies', function (Blueprint $table) {
             $table->dropColumn('companies_type_id');
-        });        
+        });
     }
 }

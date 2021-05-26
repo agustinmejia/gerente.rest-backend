@@ -54,7 +54,7 @@ class User extends Authenticatable
         return $this->hasOne('\App\Models\Employe', 'user_id');
     }
 
-    public function suscription(){
-        return $this->hasOne('\App\Models\Suscription', 'user_id');
+    public function subscription(){
+        return $this->hasOne('\App\Models\Subscription', 'user_id');
     }   
 }
