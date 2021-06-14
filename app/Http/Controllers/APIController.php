@@ -106,7 +106,7 @@ class APIController extends Controller
                 'avatar' => $request->avatar ?? '../images/user.svg',
                 'password' => bcrypt($password)
             ]);
-            $user->assignRole('owner');
+            $user->assignRole('propietario');
 
             // create person
             $person = Person::create([
@@ -198,7 +198,7 @@ class APIController extends Controller
                 $branch = Branch::findOrFail($employe->branch_id);
                 $company = Company::findOrFail($branch->company_id);
 
-                // Obtener el propietario para consultar la suscripción 
+                // Obtener el propietario para consultar la suscripción
                 $owner = Owner::where('owner_id', $company->owner_id)->first();
                 $subscription = Subscription::with('type')->where('user_id', $owner->user_id)->first();
             }
@@ -570,7 +570,7 @@ class APIController extends Controller
             $discount = $request->discount ?? 0;
             $amount_received = $request->amount_received ?? 0;
             $paid_out = ($amount_received >= ($total - $discount)) ? 1 : 0;
-            
+
             $sale = Sale::create([
                 'branch_id' => $request->branch_id,
                 'customer_id' => $request->customer_id,
@@ -725,7 +725,7 @@ class APIController extends Controller
                 $q->where('deleted_at', NULL);
             }])->where('id', $id)->where('deleted_at', NULL)->first();
             $total = $cashier->opening_amount;
-            
+
             // Recorrer todos los ingresos y sumarlos al monto de apertura
             foreach ($cashier->details as $value) {
                 if($value->type == 1){
@@ -889,7 +889,7 @@ class APIController extends Controller
                 $user->password = bcrypt($request->password);
             }
             if($image){
-                $user->avatar = $image;   
+                $user->avatar = $image;
             }
             $user->save();
 
@@ -923,7 +923,7 @@ class APIController extends Controller
         DB::beginTransaction();
         try {
             $employe = Employe::with(['person', 'user'])->where('id', $id)->first();
-            
+
             User::where('id', $employe->user->id)->update([
                 'deleted_at' => Carbon::now()
             ]);
@@ -961,7 +961,7 @@ class APIController extends Controller
                 $user->password = bcrypt($request->password);
             }
             if($image){
-                $user->avatar = $image;   
+                $user->avatar = $image;
             }
             $user->save();
 
@@ -1004,7 +1004,7 @@ class APIController extends Controller
             $sales = Company::with(['branches.sales' => function($query){
                 $query->whereDate('created_at', date('Y-m-d'));
             }, 'branches.sales.cashier'])->where('id', $company_id)->first();
-            
+
         }else{
             $sales = Company::with(['branches.sales' => function($query) use($user_id){
                 $query->whereDate('created_at', date('Y-m-d'))->where('user_id', $user_id);

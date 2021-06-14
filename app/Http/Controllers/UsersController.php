@@ -28,7 +28,7 @@ class UsersController extends Controller
     public function list()
     {
         $data = User::where('deleted_at', NULL)->select('*')->get();
-        
+
         if(!User::permission('browse users')->where('id', auth()->user()->id)->first()){
             return null;
         }
@@ -36,14 +36,22 @@ class UsersController extends Controller
         return Datatables::of($data)
                 ->addIndexColumn()
                 ->addColumn('img', function($row){
-                    return '<img src="'.url('storage/'.($row->avatar == '../images/user.svg' ? $row->avatar : str_replace('.', '-cropped.', $row->avatar))).'" width="50px" />';
+                    $image = $row->avatar;
+                    if($image == '../images/user.svg'){
+                        $image = asset('storage/'.$image);
+                    }else{
+                        if(!str_contains($image, 'https')){
+                            $image = asset('storage/'.str_replace('.', '-cropped.', $image));
+                        }
+                    }
+                    return '<img src="'.$image.'" width="50px" />';
                 })
                 ->addColumn('action', function($row){
                         $actions = '
                                     <a href="javascript:void(0)" class="edit btn btn-warning btn-sm">
                                         <i class="fas fa-eye"></i> <span class="hidden-sm">Ver</span>
                                     </a>
-                                    <a href="javascript:void(0)" class="edit btn btn-info btn-sm">
+                                    <a href="'.route('users.edit', ['user' => $row->id]).'" class="edit btn btn-info btn-sm">
                                         <i class="fas fa-edit"></i> <span class="hidden-sm">Editar</span>
                                     </a>
                                     <a href="javascript:void(0)" class="edit btn btn-danger btn-sm">
@@ -63,7 +71,8 @@ class UsersController extends Controller
      */
     public function create()
     {
-        return view('security.users.create');
+        $type = 'create';
+        return view('security.users.create-edit', compact('type'));
     }
 
     /**
@@ -102,7 +111,7 @@ class UsersController extends Controller
             ]);
 
             switch (Role::find($request->role_id)->name) {
-                case 'owner':
+                case 'propietario':
                     Owner::create([
                         'person_id' => $person->id,
                         'user_id' => $user->id
@@ -111,19 +120,9 @@ class UsersController extends Controller
             }
 
             DB::commit();
-            
-            // Returns json for the API requests
-            if($request->api){
-                return response()->json(['user' => $user]);
-            }
-
             return redirect()->route($route)->with(['message' => 'Nuevo usuario agregado', 'alert-type' => 'success']);
         } catch (\Exception $e) {
             DB::rollback();
-            // Returns json for the API requests
-            if($request->api){
-                return response()->json(['error' => $e]);
-            }
             return redirect()->route($route)->with(['message' => 'Ocurrió un error', 'alert-type' => 'error']);
         }
     }
@@ -147,7 +146,9 @@ class UsersController extends Controller
      */
     public function edit($id)
     {
-        //
+        $type = 'edit';
+        $reg = User::with('roles')->where('id', $id)->first();
+        return view('security.users.create-edit', compact('type', 'reg'));
     }
 
     /**
@@ -159,7 +160,33 @@ class UsersController extends Controller
      */
     public function update(Request $request, $id)
     {
-        //
+        DB::beginTransaction();
+        try {
+            $request->validate([
+                'name' => ['required', 'string', 'max:191'],
+                'email' => ['required', 'string', 'email', 'max:191']
+            ]);
+
+            $avatar = $this->save_image($request->file('avatar'), 'users');
+
+            $user = User::find($id);
+            $user->name = $request->name;
+            $user->email = $request->email;
+            if($request->password){
+                $user->password = bcrypt($request->password);
+            }
+            if ($avatar) {
+                $user->avatar = $avatar;
+            }
+            $user->save();
+
+            DB::commit();
+
+            return redirect()->route('users.index')->with(['message' => 'Usuario actualizado correctamente', 'alert-type' => 'success']);
+        } catch (\Exception $e) {
+            DB::rollback();
+            return redirect()->route('users.index')->with(['message' => 'Ocurrió un error', 'alert-type' => 'error']);
+        }
     }
 
     /**

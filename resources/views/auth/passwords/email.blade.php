@@ -37,10 +37,17 @@
                                             </span>
                                         @enderror
                                     </div>
+
+                                    <div class="row">
+                                        <div class="alert alert-info" role="alert">
+                                            <h5 class="alert-heading">Importante!</h5>
+                                            <p>En caso de no encontrar el correo electrónico en tu bandeja de entrada verifica en tu lista de <b>Span</b>.</p>
+                                        </div>
+                                    </div>
             
                                     <div class="form-group row mb-0">
                                         <button type="submit" class="btn btn-primary btn-user btn-block">
-                                            Envíar mensaje
+                                            Enviar mensaje <i class="fas fa-paper-plane"></i>
                                         </button>
                                     </div>
                                 </form>

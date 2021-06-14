@@ -17,18 +17,7 @@
             </div>
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                        <thead>
-                            <tr>
-                                <th>Id</th>
-                                <th>Nombre</th>
-                                <th>Ciudad</th>
-                                <th>Telefono</th>
-                                <th>Logo</th>
-                                <th style="max-width: 335px">Opciones</th>
-                            </tr>
-                        </thead>
-                    </table>
+                    <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0"></table>
                 </div>
             </div>
         </div>
@@ -53,12 +42,12 @@
         <script>
             $(document).ready(function() {
                 let columns = [
-                    { data: 'id', name: 'id' },
-                    { data: 'name', name: 'name' },
-                    { data: 'city', name: 'city' },
-                    { data: 'phones', name: 'phones' },
-                    { data: 'logo', name: 'logo', orderable: false, searchable: false },
-                    { data: 'action', name: 'action', orderable: false, searchable: false },
+                    { data: 'id', title: 'ID' },
+                    { data: 'name', title: 'Nombre' },
+                    { data: 'city', title: 'Ciudad' },
+                    { data: 'phones', title: 'Telefonos' },
+                    { data: 'logo', title: 'Logo', orderable: false, searchable: false },
+                    { data: 'action', title: 'Opciones', orderable: false, searchable: false, className: 'text-right' },
                 ]
                 customDataTable("{{ url('companies/list/registers') }}", columns);
             });
