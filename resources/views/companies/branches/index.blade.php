@@ -17,17 +17,7 @@
             </div>
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                        <thead>
-                            <tr>
-                                <th>Id</th>
-                                <th>Nombre</th>
-                                <th>Ciudad</th>
-                                <th>Telefono</th>
-                                <th style="max-width: 250px">Opciones</th>
-                            </tr>
-                        </thead>
-                    </table>
+                    <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0"></table>
                 </div>
             </div>
         </div>
@@ -52,11 +42,11 @@
         <script>
             $(document).ready(function() {
                 let columns = [
-                    { data: 'id', name: 'id' },
-                    { data: 'name', name: 'name' },
-                    { data: 'city', name: 'city' },
-                    { data: 'phones', name: 'phones' },
-                    { data: 'action', name: 'action', orderable: false, searchable: false },
+                    { data: 'id', title: 'ID' },
+                    { data: 'name', title: 'Nombre' },
+                    { data: 'city', title: 'Ciudad' },
+                    { data: 'phones', title: 'Telefonos' },
+                    { data: 'action', title: 'Opciones', orderable: false, searchable: false, className: 'text-right' },
                 ]
                 customDataTable("{{ route('companies.braches.list', ['company' => $company->id]) }}", columns);
             });

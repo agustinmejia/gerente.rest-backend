@@ -27,7 +27,7 @@ class RolesController extends Controller
     public function list()
     {
         $data = Role::all();
-        
+
         if(!User::permission('browse roles')->where('id', auth()->user()->id)->first()){
             return null;
         }
@@ -43,10 +43,12 @@ class RolesController extends Controller
                                     <a href="'.route('roles.edit', ['role' => $row->id]).'" class="edit btn btn-info btn-sm">
                                         <i class="fas fa-edit"></i> <span class="hidden-sm">Editar</span>
                                     </a>
-                                    <a onclick="deleteRegister('.$url.')" data-toggle="modal" data-target="#deleteModal" class="edit btn btn-danger btn-sm">
-                                        <i class="fas fa-trash"></i> <span class="hidden-sm">Eliminar</span>
-                                    </a>
                                 ';
+                        if($row->id > 8){
+                            $actions .= '<a onclick="deleteRegister('.$url.')" data-toggle="modal" data-target="#deleteModal" class="edit btn btn-danger btn-sm">
+                                            <i class="fas fa-trash"></i> <span class="hidden-sm">Eliminar</span>
+                                        </a>';
+                        }
                         return $actions;
                 })
                 ->rawColumns(['action'])

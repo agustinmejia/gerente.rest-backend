@@ -20,13 +20,16 @@ class RolesTableSeeder extends Seeder
     {
         // Create roles
         $root = Role::create(['name' => 'root']);
-        $owner = Role::create(['name' => 'owner']);
+        $owner = Role::create(['name' => 'propietario']);
         $manager = Role::create(['name' => 'gerente']);
         $cashier = Role::create(['name' => 'cajero']);
         $delivery = Role::create(['name' => 'repartidor']);
+        $customer = Role::create(['name' => 'cliente']);
+        $admin = Role::create(['name' => 'administrador']);
+        $soporte = Role::create(['name' => 'soporte']);
 
         // create permissions
-        
+
         // Dashboard
         Permission::create(['name' => 'browse dashboard']);
 
@@ -51,9 +54,11 @@ class RolesTableSeeder extends Seeder
         Permission::create(['name' => 'edit roles']);
         Permission::create(['name' => 'delete roles']);
 
+        // Sync permission
         $permissions = Permission::all();
         $root->syncPermissions($permissions);
 
+        // Asing role
         $user = User::findOrFail(1);
         $user->assignRole('root');
     }

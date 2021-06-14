@@ -18,15 +18,6 @@
             <div class="card-body">
                 <div class="table-responsive">
                     <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                        <thead>
-                            <tr>
-                                <th>Id</th>
-                                <th>Nombre</th>
-                                <th>Guardia</th>
-                                <th style="max-width: 250px">Opciones</th>
-                            </tr>
-                        </thead>
-                        
                     </table>
                 </div>
             </div>
@@ -52,10 +43,10 @@
         <script>
             $(document).ready(function() {
                 let columns = [
-                    { data: 'id', name: 'id' },
-                    { data: 'name', name: 'name' },
-                    { data: 'guard_name', name: 'guard_name' },
-                    { data: 'action', name: 'action', orderable: false, searchable: false },
+                    { data: 'id', title: 'ID' },
+                    { data: 'name', title: 'Nombre' },
+                    { data: 'guard_name', title: 'Guardia' },
+                    { data: 'action', title: 'Opciones', orderable: false, searchable: false, className: 'text-right' },
                 ]
                 customDataTable("{{ url('roles/list/registers') }}", columns);
             });
